@@ -1,0 +1,1 @@
+Gnome shell extension making buttons on the bottom of the screen for minimized windows. now Running on gnome 48 (debian 13), not working for gnome 43 (debian 12) anymore. Still some work needed for the transition, but it works for now.
