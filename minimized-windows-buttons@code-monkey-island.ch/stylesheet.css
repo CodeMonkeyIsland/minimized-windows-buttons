@@ -1,0 +1,25 @@
+.minimized-button {
+  padding: 6px 12px;
+  border-radius: 12px;
+  background-color: rgba(0,0,0,0.6);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.2);
+  font-weight: 600;
+  width:150px;
+}
+
+.minimized-button:hover {
+  background-color: rgba(100,100,100,0.6);
+}
+
+.button-icon{
+	height:20px;
+	width:20px;
+	margin-right: 10px;
+}
+
+.minimized-button-label {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
