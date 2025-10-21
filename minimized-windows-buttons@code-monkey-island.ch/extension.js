@@ -1,13 +1,11 @@
 import St from 'gi://St';
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
-//import Gtk from 'gi://Gtk';
 import Shell from 'gi://Shell';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 
-//function init() {}
 
 export default class MinimizedButtonsExtension extends Extension {
 
@@ -29,7 +27,7 @@ export default class MinimizedButtonsExtension extends Extension {
             vertical: false,
             style_class: "bottom-container"
         });
-        //Main.layoutManager.uiGroup.add_child(container);
+
         Main.layoutManager.addChrome(this.container, { trackFullscreen: true });
 
         // Create button for sizing, then hide it
@@ -47,7 +45,7 @@ export default class MinimizedButtonsExtension extends Extension {
         for (const actor of global.get_window_actors())
             this._watchWindow(actor.meta_window);
 
-        /*
+        /* TODO
         container._resizeSignal = global.display.connect('monitors-changed', () => {
             monitor=Main.layoutManager.primaryMonitor;
             button.set_position(10, monitor.height - button.height - 10);
@@ -136,12 +134,13 @@ export default class MinimizedButtonsExtension extends Extension {
     _getWindowGicon(metaWindow) {
     	try{
             /*
+            //leaving this in here for now. this method needs to be adjusted for gnome 48+
     		log('pid: '+metaWindow.get_pid());
     		log('wm_class: '+metaWindow.get_wm_class());
     		log('wm_class_instance: '+metaWindow.get_wm_class_instance());
     		log('gtk menubar object path: '+metaWindow.get_gtk_menubar_object_path());
     		log('gtk app id: '+metaWindow.get_gtk_application_id());
-    */
+            */
 
             let giconName = metaWindow.get_gtk_application_id() || (metaWindow.get_wm_class() + '').toLowerCase();
 
@@ -197,4 +196,4 @@ export default class MinimizedButtonsExtension extends Extension {
         }
     }
 
-} //extends extension
+} //MinimizedButtonsExtension extends Extension

@@ -3,6 +3,6 @@
   "name": "minimized-windows-buttons",
   "description": "Shows a Button on the bottom of the screen for each minimized Window. Click to maximize again.",
   "shell-version": ["48"],
-  "version": 1,
+  "url": "https://github.com/CodeMonkeyIsland/minimized-windows-buttons",
   "stylesheet": "stylesheet.css"
 }
