@@ -114,8 +114,8 @@ export default class MinimizedButtonsExtension extends Extension {
         btn.connect('clicked', () => {
             let currentWorkspace = global.workspace_manager.get_active_workspace();
             metaWindow.change_workspace(currentWorkspace);
-            try { metaWindow.unminimize(); } catch(e) { logError(e); }
-            try { metaWindow.activate(global.get_current_time()); } catch(e) { logError(e); }
+            try { metaWindow.unminimize(); } catch(e) { console.error(e); }
+            try { metaWindow.activate(global.get_current_time());} catch(e) { console.error(e); }
 
             this._removeButton(metaWindow);
         });
@@ -135,11 +135,11 @@ export default class MinimizedButtonsExtension extends Extension {
     	try{
             /*
             //leaving this in here for now. this method needs to be adjusted for gnome 48+
-    		log('pid: '+metaWindow.get_pid());
-    		log('wm_class: '+metaWindow.get_wm_class());
-    		log('wm_class_instance: '+metaWindow.get_wm_class_instance());
-    		log('gtk menubar object path: '+metaWindow.get_gtk_menubar_object_path());
-    		log('gtk app id: '+metaWindow.get_gtk_application_id());
+    		console.log('pid: '+metaWindow.get_pid());
+    		console.log('wm_class: '+metaWindow.get_wm_class());
+    		console.log('wm_class_instance: '+metaWindow.get_wm_class_instance());
+    		console.log('gtk menubar object path: '+metaWindow.get_gtk_menubar_object_path());
+    		console.log('gtk app id: '+metaWindow.get_gtk_application_id());
             */
 
             let giconName = metaWindow.get_gtk_application_id() || (metaWindow.get_wm_class() + '').toLowerCase();
@@ -147,15 +147,14 @@ export default class MinimizedButtonsExtension extends Extension {
             let gicon = new Gio.ThemedIcon({ name: giconName });
 
             if (!gicon) {
-                log('MinimizedButtonsExtension: no icon found for '+giconName+', using default');
+                console.log('MinimizedButtonsExtension: no icon found for '+giconName+', using default');
                 gicon = new Gio.ThemedIcon({ name: 'application-x-executable' });
             }
 
             return gicon;
 
         }catch(e){
-        	log('failed');
-        	log(e.stack);
+        	console.error(e);
         }
         //fallback
         return Gio.icon_new_for_string('application-x-executable'); 
@@ -164,8 +163,8 @@ export default class MinimizedButtonsExtension extends Extension {
     _unwatchWindow(metaWindow) {
         const ids = this.windowSignals.get(metaWindow);
         if (!ids) return;
-        try { metaWindow.disconnect(ids.minimized); } catch (e) { logError(e); }
-        try { metaWindow.disconnect(ids.unmanaged); } catch (e) { logError(e); }
+        try { metaWindow.disconnect(ids.minimized); } catch (e) { console.error(e); }
+        try { metaWindow.disconnect(ids.unmanaged); } catch (e) { console.error(e); }
         this.windowSignals.delete(metaWindow);
     }
 
@@ -180,8 +179,8 @@ export default class MinimizedButtonsExtension extends Extension {
         }
 
         for (const [win, ids] of this.windowSignals) {
-            try { win.disconnect(ids.minimized); } catch(e) { logError(e); }
-            try { win.disconnect(ids.unmanaged); } catch(e) { logError(e); }
+            try { win.disconnect(ids.minimized); } catch(e) { console.error(e); }
+            try { win.disconnect(ids.unmanaged); } catch(e) { console.error(e); }
         }
         this.windowSignals.clear();
 
