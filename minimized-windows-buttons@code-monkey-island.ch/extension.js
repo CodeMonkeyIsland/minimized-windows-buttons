@@ -14,8 +14,13 @@ export default class MinimizedButtonsExtension extends Extension {
     sessionSig=0;
     windowSignals=new Map();
     windowButtons=new Map();
+    sizingButton=null;
+    settings=null;
 
     enable() {
+
+        this.settings=this.getSettings();
+        //new Gio.Settings({ schema_id: 'org.gnome.shell.extensions.minimized-windows-buttons' });
 
         this.sessionSig = Main.sessionMode.connect('updated', () => {
             for (const actor of global.get_window_actors()){
@@ -30,20 +35,30 @@ export default class MinimizedButtonsExtension extends Extension {
 
         Main.layoutManager.addChrome(this.container, { trackFullscreen: true });
 
-        // Create button for sizing, then hide it
-        let button = new St.Button({ label: 'Hello', style_class: 'minimized-button' });
-        this.container.add_child(button);
-        button.hide();
+        Main.overview.connect('showing', () => this._setOverviewVisibility());
+        Main.overview.connect('hiding', () => this._setOverviewVisibility());
+        this._setOverviewVisibility();
 
-        let monitor=Main.layoutManager.primaryMonitor;
-        this.container.set_position(10, monitor.height - button.height - 10);
+
+        // Create button for sizing, then hide it
+        this.sizingButton = new St.Button({ label: 'Hello', style_class: 'minimized-button' });
+        this.container.add_child(this.sizingButton);
+        this.sizingButton.hide();
+
+        //position of the buttons (top/bottom)
+        this._setPosition();
+        this.settings.connect('changed::position-on-screen', () => {
+            this._setPosition();
+        });
+
 
         //new windows
         this.displaySig = global.display.connect('window-created', (_d, metaWindow) => this._watchWindow(metaWindow));
 
         //existing windows
-        for (const actor of global.get_window_actors())
+        for (const actor of global.get_window_actors()){
             this._watchWindow(actor.meta_window);
+        }
 
         /* TODO
         container._resizeSignal = global.display.connect('monitors-changed', () => {
@@ -51,6 +66,10 @@ export default class MinimizedButtonsExtension extends Extension {
             button.set_position(10, monitor.height - button.height - 10);
         });
         */
+
+        //preferences
+        
+
     }
 
     _watchWindow(metaWindow) {
@@ -80,8 +99,7 @@ export default class MinimizedButtonsExtension extends Extension {
     }
 
     _ensureButton(metaWindow) {
-        if (this.windowButtons.has(metaWindow))
-            return;
+        if (this.windowButtons.has(metaWindow)) {return};
 
         let gicon = this._getWindowGicon(metaWindow);
         let icon = new St.Icon({ gicon, style_class: 'button-icon' });
@@ -131,6 +149,27 @@ export default class MinimizedButtonsExtension extends Extension {
         }
     }
 
+    _setPosition(){
+        let _position = this.settings.get_string('position-on-screen');
+        let monitor=Main.layoutManager.primaryMonitor;
+        if (_position=='top'){
+            //need to find out top bars height somehow....
+            //and set margin of buttons in settings
+            this.container.set_position(3, 33);
+        }else{ //bottom
+            this.container.set_position(3, monitor.height - this.sizingButton.height - 3);
+        }
+    }
+
+    _setOverviewVisibility(){
+        let showInOverview = this.settings.get_boolean('show-in-overview');
+        if (Main.overview.visible) {
+            this.container.visible = showInOverview;
+        } else {
+            this.container.visible = true;
+        }
+    }
+
     _getWindowGicon(metaWindow) {
     	try{
             /*
@@ -162,9 +201,9 @@ export default class MinimizedButtonsExtension extends Extension {
 
     _unwatchWindow(metaWindow) {
         const ids = this.windowSignals.get(metaWindow);
-        if (!ids) return;
-        try { metaWindow.disconnect(ids.minimized); } catch (e) { console.error(e); }
-        try { metaWindow.disconnect(ids.unmanaged); } catch (e) { console.error(e); }
+        if (!ids) {return;}
+        metaWindow.disconnect(ids.minimized);
+        metaWindow.disconnect(ids.unmanaged);
         this.windowSignals.delete(metaWindow);
     }
 
@@ -179,8 +218,8 @@ export default class MinimizedButtonsExtension extends Extension {
         }
 
         for (const [win, ids] of this.windowSignals) {
-            try { win.disconnect(ids.minimized); } catch(e) { console.error(e); }
-            try { win.disconnect(ids.unmanaged); } catch(e) { console.error(e); }
+            win.disconnect(ids.minimized);
+            win.disconnect(ids.unmanaged);
         }
         this.windowSignals.clear();
 
@@ -193,6 +232,8 @@ export default class MinimizedButtonsExtension extends Extension {
             this.container.destroy();
             this.container = null;
         }
+        this._settings = null;
+
     }
 
 } //MinimizedButtonsExtension extends Extension

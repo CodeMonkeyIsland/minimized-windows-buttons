@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.minimized-windows-buttons" path="/org/gnome/shell/extensions/minimized-windows-buttons/">
+    <key name="show-in-overview" type="b">
+      <default>false</default>
+    </key>
+    <key name="position-on-screen" type="s">
+      <default>'bottom'</default>
+    </key>
+  </schema>
+</schemalist>
