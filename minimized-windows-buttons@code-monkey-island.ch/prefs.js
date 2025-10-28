@@ -15,8 +15,8 @@ export default class ExamplePreferences extends ExtensionPreferences {
         window.add(page);
 
         const group = new Adw.PreferencesGroup({
-            title: _('Appearance'),
-            description: _('Configure the appearance of the extension'),
+            title: _('Settings'),
+            description: _('Configure the extension'),
         });
         page.add(group); 
 

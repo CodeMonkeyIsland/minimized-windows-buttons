@@ -59,17 +59,6 @@ export default class MinimizedButtonsExtension extends Extension {
         for (const actor of global.get_window_actors()){
             this._watchWindow(actor.meta_window);
         }
-
-        /* TODO
-        container._resizeSignal = global.display.connect('monitors-changed', () => {
-            monitor=Main.layoutManager.primaryMonitor;
-            button.set_position(10, monitor.height - button.height - 10);
-        });
-        */
-
-        //preferences
-        
-
     }
 
     _watchWindow(metaWindow) {
@@ -172,22 +161,45 @@ export default class MinimizedButtonsExtension extends Extension {
 
     _getWindowGicon(metaWindow) {
     	try{
-            /*
-            //leaving this in here for now. this method needs to be adjusted for gnome 48+
-    		console.log('pid: '+metaWindow.get_pid());
-    		console.log('wm_class: '+metaWindow.get_wm_class());
-    		console.log('wm_class_instance: '+metaWindow.get_wm_class_instance());
-    		console.log('gtk menubar object path: '+metaWindow.get_gtk_menubar_object_path());
-    		console.log('gtk app id: '+metaWindow.get_gtk_application_id());
-            */
+            let gicon = null;
+            let app = null;
+            let giconName = null;
 
-            let giconName = metaWindow.get_gtk_application_id() || (metaWindow.get_wm_class() + '').toLowerCase();
+            const gtkAppId = metaWindow.get_gtk_application_id?.();
+            const wmClass = metaWindow.get_wm_class?.();
+            const wmInstance = metaWindow.get_wm_class_instance?.();
+            const appSys = Shell.AppSystem.get_default();
 
-            let gicon = new Gio.ThemedIcon({ name: giconName });
+            //1. GTK app ID
+            if (gtkAppId){
+                app = appSys.lookup_app(gtkAppId + '.desktop');
+            }
 
-            if (!gicon) {
-                console.log('MinimizedButtonsExtension: no icon found for '+giconName+', using default');
-                gicon = new Gio.ThemedIcon({ name: 'application-x-executable' });
+            //2. WM_CLASS
+            if (!app && wmClass){
+                app = appSys.lookup_startup_wmclass(wmClass);
+            }
+
+            //3. WM instance
+            if (!app && wmInstance){
+                app = appSys.lookup_startup_wmclass(wmInstance);
+            }
+
+            //4. sublime, others?
+            if (!app && wmClass){
+                app=appSys.lookup_app(wmClass.replaceAll('-','_')+'.desktop');
+            }
+
+            //OK, get the gicon, preferably from app, else try something or fallback
+            if (app){
+                gicon = app.get_app_info()?.get_icon() || app.get_icon();
+            }else{
+                giconName = (gtkAppId || wmClass || wmInstance ).toLowerCase();
+                gicon = new Gio.ThemedIcon({ name: giconName });
+            }
+            if (!gicon){
+                giconName = 'application-x-executable';
+            gicon = new Gio.ThemedIcon({ name: giconName });
             }
 
             return gicon;
@@ -195,8 +207,8 @@ export default class MinimizedButtonsExtension extends Extension {
         }catch(e){
         	console.error(e);
         }
-        //fallback
-        return Gio.icon_new_for_string('application-x-executable'); 
+
+        return new Gio.ThemedIcon({ name: 'application-x-executable' });
     }
 
     _unwatchWindow(metaWindow) {
@@ -232,7 +244,7 @@ export default class MinimizedButtonsExtension extends Extension {
             this.container.destroy();
             this.container = null;
         }
-        this._settings = null;
+        this.settings = null;
 
     }
 
