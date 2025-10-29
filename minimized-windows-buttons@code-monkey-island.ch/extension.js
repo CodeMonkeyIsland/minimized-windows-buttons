@@ -20,6 +20,7 @@ export default class MinimizedButtonsExtension extends Extension {
     enable() {
 
         this.settings=this.getSettings();
+        //TODO: take a look at this:
         //new Gio.Settings({ schema_id: 'org.gnome.shell.extensions.minimized-windows-buttons' });
 
         this.sessionSig = Main.sessionMode.connect('updated', () => {
@@ -35,6 +36,7 @@ export default class MinimizedButtonsExtension extends Extension {
 
         Main.layoutManager.addChrome(this.container, { trackFullscreen: true });
 
+        //hide or show on overview?
         Main.overview.connect('showing', () => this._setOverviewVisibility());
         Main.overview.connect('hiding', () => this._setOverviewVisibility());
         this._setOverviewVisibility();
@@ -44,6 +46,17 @@ export default class MinimizedButtonsExtension extends Extension {
         this.sizingButton = new St.Button({ label: 'Hello', style_class: 'minimized-button' });
         this.container.add_child(this.sizingButton);
         this.sizingButton.hide();
+
+        //margins
+        this.settings.connect('changed::margin-vertical', () => {
+            this._setPosition();
+        });
+        this.settings.connect('changed::margin-horizontal', () => {
+            this._setPosition();
+        });
+        this.settings.connect('changed::margin-buttons', () => {
+            this._setPosition();
+        });
 
         //position of the buttons (top/bottom)
         this._setPosition();
@@ -127,6 +140,9 @@ export default class MinimizedButtonsExtension extends Extension {
             this._removeButton(metaWindow);
         });
 
+        let buttonMargin=this.settings.get_int('margin-buttons');
+        btn.set_style('margin-right: '+buttonMargin+'px;');
+
         this.windowButtons.set(metaWindow, btn);
     }
 
@@ -141,13 +157,21 @@ export default class MinimizedButtonsExtension extends Extension {
     _setPosition(){
         let _position = this.settings.get_string('position-on-screen');
         let monitor=Main.layoutManager.primaryMonitor;
+        let topPanel=Main.panel;
+        let verticalMargin=this.settings.get_int('margin-vertical');
+        let horizontalMargin=this.settings.get_int('margin-horizontal');
         if (_position=='top'){
-            //need to find out top bars height somehow....
-            //and set margin of buttons in settings
-            this.container.set_position(3, 33);
+            this.container.set_position(horizontalMargin, topPanel.height+verticalMargin-1);
         }else{ //bottom
-            this.container.set_position(3, monitor.height - this.sizingButton.height - 3);
+            this.container.set_position(horizontalMargin, monitor.height - this.sizingButton.height - verticalMargin);
         }
+
+        //need to do this in ensure button, too.
+        let buttonMargin=this.settings.get_int('margin-buttons');
+        for (const child of this.container.get_children()) {
+            child.set_style('margin-right: '+buttonMargin+'px;');
+        }
+
     }
 
     _setOverviewVisibility(){
@@ -170,17 +194,17 @@ export default class MinimizedButtonsExtension extends Extension {
             const wmInstance = metaWindow.get_wm_class_instance?.();
             const appSys = Shell.AppSystem.get_default();
 
-            //1. GTK app ID
+            //1. gtk app id
             if (gtkAppId){
                 app = appSys.lookup_app(gtkAppId + '.desktop');
             }
 
-            //2. WM_CLASS
+            //2. wmClass
             if (!app && wmClass){
                 app = appSys.lookup_startup_wmclass(wmClass);
             }
 
-            //3. WM instance
+            //3. wm instance
             if (!app && wmInstance){
                 app = appSys.lookup_startup_wmclass(wmInstance);
             }
@@ -207,7 +231,6 @@ export default class MinimizedButtonsExtension extends Extension {
         }catch(e){
         	console.error(e);
         }
-
         return new Gio.ThemedIcon({ name: 'application-x-executable' });
     }
 

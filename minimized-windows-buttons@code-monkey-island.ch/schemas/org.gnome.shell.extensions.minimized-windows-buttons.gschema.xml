@@ -7,5 +7,23 @@
     <key name="position-on-screen" type="s">
       <default>'bottom'</default>
     </key>
+    <key name="margin-vertical" type="i">
+      <default>3</default>
+      <range min="0" max="50"/>
+      <summary>Button container: vertical margin</summary>
+      <description>Vertical spacing, margin top for position top/margin bottom for position bottom</description>
+    </key>
+    <key name="margin-horizontal" type="i">
+      <default>3</default>
+      <range min="0" max="50"/>
+      <summary>Button container: horizontal margin</summary>
+      <description>Horizontal spacing, for now margin-left</description>
+    </key>
+    <key name="margin-buttons" type="i">
+      <default>1</default>
+      <range min="0" max="20"/>
+      <summary>button margins</summary>
+      <description>space between buttons</description>
+    </key>
   </schema>
 </schemalist>

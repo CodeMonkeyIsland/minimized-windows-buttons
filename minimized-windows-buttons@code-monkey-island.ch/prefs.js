@@ -27,7 +27,7 @@ export default class ExamplePreferences extends ExtensionPreferences {
         });
         group.add(row);
 
-        // Create a settings object and bind the row
+        //bind the row to settings
         window._settings = this.getSettings();
         window._settings.bind('show-in-overview', row, 'active', Gio.SettingsBindFlags.DEFAULT);
 
@@ -51,5 +51,131 @@ export default class ExamplePreferences extends ExtensionPreferences {
 
         group.add(combo);
         window._settings.bind('position-on-screen', combo, 'active', Gio.SettingsBindFlags.DEFAULT);
+
+
+
+
+        //vertical margins
+        const row1 = new Adw.ActionRow({
+            title: 'Button container: vertical margin',
+            subtitle: 'Vertical spacing, margin top for position top/margin bottom for position bottom',
+        });
+
+        const adjustment1 = new Gtk.Adjustment({
+            lower: 0,
+            upper: 50,
+            step_increment: 1,
+            page_increment: 1,
+            value: this.getSettings().get_int('margin-vertical')
+        });
+
+        const slider1 = new Gtk.Scale({
+            orientation: Gtk.Orientation.HORIZONTAL,
+            adjustment: adjustment1,
+            digits: 0,
+            draw_value: true,
+            hexpand: false,
+            valign: Gtk.Align.CENTER,
+            width_request: 200
+        });
+
+        slider1.connect('value-changed', () => {
+            this.getSettings().set_int('margin-vertical', Math.round(slider1.get_value()));
+        });
+
+        // Keep slider synced if settings change elsewhere
+        this.getSettings().connect('changed::margin-vertical', () => {
+            slider1.set_value(this.getSettings().get_int('margin-vertical'));
+        });
+
+        row1.add_suffix(slider1);
+        row1.activatable_widget = slider1;
+
+        group.add(row1);
+
+
+
+
+
+        //horizontal margins
+        const row2 = new Adw.ActionRow({
+            title: 'Button container: horizontal margin',
+            subtitle: 'Horizontal spacing, for now margin-left',
+        });
+
+        const adjustment2 = new Gtk.Adjustment({
+            lower: 0,
+            upper: 50,
+            step_increment: 1,
+            page_increment: 1,
+            value: this.getSettings().get_int('margin-horizontal'),
+        });
+
+        const slider2 = new Gtk.Scale({
+            orientation: Gtk.Orientation.HORIZONTAL,
+            adjustment: adjustment2,
+            digits: 0,
+            draw_value: true,
+            hexpand: false,
+            valign: Gtk.Align.CENTER,
+            width_request: 200
+        });
+
+        slider2.connect('value-changed', () => {
+            this.getSettings().set_int('margin-horizontal', Math.round(slider2.get_value()));
+        });
+
+        // Keep slider synced if settings change elsewhere
+        this.getSettings().connect('changed::margin-horizontal', () => {
+            slider2.set_value(this.getSettings().get_int('margin-horizontal'));
+        });
+
+        row2.add_suffix(slider2);
+        row2.activatable_widget = slider2;
+
+        group.add(row2);
+
+
+
+
+
+        //button margins
+        const row3 = new Adw.ActionRow({
+            title: 'Button margins',
+            subtitle: 'margin-right of buttons',
+        });
+
+        const adjustment3 = new Gtk.Adjustment({
+            lower: 0,
+            upper: 20,
+            step_increment: 1,
+            page_increment: 1,
+            value: this.getSettings().get_int('margin-buttons'),
+        });
+
+        const slider3 = new Gtk.Scale({
+            orientation: Gtk.Orientation.HORIZONTAL,
+            adjustment: adjustment3,
+            digits: 0,
+            draw_value: true,
+            hexpand: false,
+            valign: Gtk.Align.CENTER,
+            width_request: 200
+        });
+
+        slider3.connect('value-changed', () => {
+            this.getSettings().set_int('margin-buttons', Math.round(slider3.get_value()));
+        });
+
+        // Keep slider synced if settings change elsewhere
+        this.getSettings().connect('changed::margin-buttons', () => {
+            slider3.set_value(this.getSettings().get_int('margin-horizontal'));
+        });
+
+        row3.add_suffix(slider3);
+        row3.activatable_widget = slider3;
+
+        group.add(row3);
+
     }
 }
