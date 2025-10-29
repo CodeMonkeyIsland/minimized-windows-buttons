@@ -20,8 +20,6 @@ export default class MinimizedButtonsExtension extends Extension {
     enable() {
 
         this.settings=this.getSettings();
-        //TODO: take a look at this:
-        //new Gio.Settings({ schema_id: 'org.gnome.shell.extensions.minimized-windows-buttons' });
 
         this.sessionSig = Main.sessionMode.connect('updated', () => {
             for (const actor of global.get_window_actors()){

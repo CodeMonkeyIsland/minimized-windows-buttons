@@ -1,11 +1,12 @@
 import Gio from 'gi://Gio';
 import Adw from 'gi://Adw';
-import Gtk from 'gi://Gtk?version=4.0';
+import Gtk from 'gi://Gtk';
 
 import {ExtensionPreferences, gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 
-export default class ExamplePreferences extends ExtensionPreferences {
+export default class MinimizedWindowsButtonsPreferences extends ExtensionPreferences {
+
     fillPreferencesWindow(window) {
         // Create a preferences page, with a single group
         const page = new Adw.PreferencesPage({
