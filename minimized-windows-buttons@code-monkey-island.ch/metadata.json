@@ -2,7 +2,7 @@
   "uuid": "minimized-windows-buttons@code-monkey-island.ch",
   "name": "Minimized Windows Buttons",
   "description": "Shows a button on the bottom (or top) of the screen for each minimized window. Click to maximize again.",
-  "shell-version": ["48"],
+  "shell-version": ["48", "49"],
   "url": "https://github.com/CodeMonkeyIsland/minimized-windows-buttons",
   "settings-schema": "org.gnome.shell.extensions.minimized-windows-buttons"
 }
