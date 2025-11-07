@@ -32,6 +32,15 @@ export default class MinimizedWindowsButtonsPreferences extends ExtensionPrefere
         window._settings = this.getSettings();
         window._settings.bind('show-in-overview', row, 'active', Gio.SettingsBindFlags.DEFAULT);
 
+        // stick to workspace or always visible
+        const rowWS = new Adw.SwitchRow({
+            title: _('Per Workspace Buttons'),
+            subtitle: _('Show all Buttons(false), or only those belonging to the current workspace(true). Windows will always open in the current workspace'),
+        });
+
+        group.add(rowWS);
+        window._settings = this.getSettings();
+        window._settings.bind('per-workspace-buttons', rowWS, 'active', Gio.SettingsBindFlags.DEFAULT);
 
 
         //position: top or bottom for now

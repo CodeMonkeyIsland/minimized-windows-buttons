@@ -12,9 +12,14 @@ export default class MinimizedButtonsExtension extends Extension {
     container=null;
     displaySig=0;
     sessionSig=0;
+    workspaceSig=0;
+
     windowSignals=new Map();
     windowButtons=new Map();
+    windowWorkspaces=new Map();
+
     sizingButton=null;
+
     settings=null;
 
     enable() {
@@ -38,6 +43,16 @@ export default class MinimizedButtonsExtension extends Extension {
         Main.overview.connect('showing', () => this._setOverviewVisibility());
         Main.overview.connect('hiding', () => this._setOverviewVisibility());
         this._setOverviewVisibility();
+
+
+        //per workspace
+        this.workspaceSig = global.workspace_manager.connect(
+            'active-workspace-changed',
+            () => this._setWorkspaceButtonVisibility()
+        );
+        this.settings.connect('changed::per-workspace-buttons', () => {
+            this._resetWorkspaceButtonVisibility();
+        });
 
 
         // Create button for sizing, then hide it
@@ -79,8 +94,13 @@ export default class MinimizedButtonsExtension extends Extension {
 
         const minimizedId = metaWindow.connect('notify::minimized', () => {
             if (metaWindow.minimized) {
+                this.windowWorkspaces.set(
+                    metaWindow,
+                    metaWindow.get_workspace().index()
+                );
                 this._ensureButton(metaWindow);
             } else {
+                this.windowWorkspaces.delete(metaWindow);
                 this._removeButton(metaWindow);
             }
         });
@@ -142,6 +162,8 @@ export default class MinimizedButtonsExtension extends Extension {
         btn.set_style('margin-right: '+buttonMargin+'px;');
 
         this.windowButtons.set(metaWindow, btn);
+
+        this._setWorkspaceButtonVisibility();
     }
 
     _removeButton(metaWindow) {
@@ -170,6 +192,29 @@ export default class MinimizedButtonsExtension extends Extension {
             child.set_style('margin-right: '+buttonMargin+'px;');
         }
 
+    }
+
+    _resetWorkspaceButtonVisibility(){
+        for (let [metaWindow, btn] of this.windowButtons) {
+             btn.visible=true;
+        }
+        _setWorkspaceButtonVisibility();
+    }
+
+    _setWorkspaceButtonVisibility(){
+        if (this.settings.get_boolean('per-workspace-buttons')){
+            let currentWorkspaceNr=global.workspace_manager.get_active_workspace().index();
+            for (let [metaWindow, btn] of this.windowButtons) {
+                let windowWorkspaceNr = this.windowWorkspaces.get(metaWindow);
+                if (windowWorkspaceNr==currentWorkspaceNr){
+                    btn.visible=true;
+                }else{
+                    btn.visible=false;
+                }
+            }
+        }else{
+            //do nothing
+        }
     }
 
     _setOverviewVisibility(){
@@ -241,6 +286,13 @@ export default class MinimizedButtonsExtension extends Extension {
     }
 
     disable() {
+
+        if (this.workspaceSig) {
+            global.workspace_manager.disconnect(this.workspaceSig);
+            this.workspaceSig = 0;
+        }
+        this.windowWorkspaces.clear();
+        
         if (this.sessionSig) {
             Main.sessionMode.disconnect(this.sessionSig);
             this.sessionSig = null;
