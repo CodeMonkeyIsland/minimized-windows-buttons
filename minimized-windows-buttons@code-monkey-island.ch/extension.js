@@ -9,7 +9,11 @@ import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 
 export default class MinimizedButtonsExtension extends Extension {
 
-    container=null;
+    _container=null;
+    _scrollContainer=null;
+
+    _scrollOverwriteSig=0;
+    _useScrollPiping=false;
     displaySig=0;
     sessionSig=0;
     workspaceSig=0;
@@ -32,12 +36,37 @@ export default class MinimizedButtonsExtension extends Extension {
             }
         });
 
-        this.container = new St.BoxLayout({
-            vertical: false,
+        this._container = new St.BoxLayout({
+            vertical: false, //            reactive: true, ?
             style_class: "bottom-container"
         });
 
-        Main.layoutManager.addChrome(this.container, { trackFullscreen: true });
+        this._scrollContainer = new St.ScrollView({
+            overlay_scrollbars: false,
+            enable_mouse_scrolling: true,
+            x_expand: true,
+            y_expand: true,
+            style_class: "button-scroll-container"
+        });
+        this._scrollContainer.add_child(this._container);
+
+/*
+        //what covers what chrome=front
+        this._setCoverPosition();
+        this.settings.connect('changed::cover-behaviour', () => {
+            this._setCoverPosition();
+        });
+*/
+        Main.layoutManager.addChrome(this._scrollContainer, { trackFullscreen: true });
+
+/*
+        this.container.connect('enter-event', () => {
+            _containerEnterFunction();
+        });
+        this.container.connect('enter-event', () => {
+            _containerLeaveFunction();
+        });
+*/
 
         //hide or show on overview?
         Main.overview.connect('showing', () => this._setOverviewVisibility());
@@ -57,8 +86,10 @@ export default class MinimizedButtonsExtension extends Extension {
 
         // Create button for sizing, then hide it
         this.sizingButton = new St.Button({ label: 'Hello', style_class: 'minimized-button' });
-        this.container.add_child(this.sizingButton);
+        this._container.add_child(this.sizingButton);
         this.sizingButton.hide();
+
+        this._scrollPiper = this._scrollPiping.bind(this);
 
         //margins
         this.settings.connect('changed::margin-vertical', () => {
@@ -77,6 +108,12 @@ export default class MinimizedButtonsExtension extends Extension {
             this._setPosition();
         });
 
+        this._scrollContainer.connect('scroll-event', (actor, event) => {
+            if (this._useScrollPiping) {
+                return this._scrollPiping(actor, event);
+            }
+            return Clutter.EVENT_PROPAGATE;
+        });
 
         //new windows
         this.displaySig = global.display.connect('window-created', (_d, metaWindow) => this._watchWindow(metaWindow));
@@ -85,6 +122,7 @@ export default class MinimizedButtonsExtension extends Extension {
         for (const actor of global.get_window_actors()){
             this._watchWindow(actor.meta_window);
         }
+
     }
 
     _watchWindow(metaWindow) {
@@ -143,11 +181,11 @@ export default class MinimizedButtonsExtension extends Extension {
         const btn = new St.Button({
             style_class: 'minimized-button',
             child: content,
-            x_expand: true,
+            x_expand: false,
             y_align: Clutter.ActorAlign.CENTER
         });
 
-        this.container.add_child(btn);
+        this._container.add_child(btn);
 
         btn.connect('clicked', () => {
             let currentWorkspace = global.workspace_manager.get_active_workspace();
@@ -159,40 +197,140 @@ export default class MinimizedButtonsExtension extends Extension {
         });
 
         let buttonMargin=this.settings.get_int('margin-buttons');
-        btn.set_style('margin-right: '+buttonMargin+'px;');
+        if (this.settings.get_string('position-on-screen') == 'top' ||
+            this.settings.get_string('position-on-screen') == 'bottom'){
+            btn.set_style('width: 150px; margin-right: '+buttonMargin+'px; margin-bottom: 0px;'); //do i really need to reset width here? (css?)
+        }else{
+            btn.set_style('width: 150px; margin-bottom: '+buttonMargin+'px; margin-right: 0px;');
+        }
 
         this.windowButtons.set(metaWindow, btn);
 
         this._setWorkspaceButtonVisibility();
+
     }
 
     _removeButton(metaWindow) {
         const btn = this.windowButtons.get(metaWindow);
         if (btn) {
-            this.container.remove_child(btn);
+            this._container.remove_child(btn);
             this.windowButtons.delete(metaWindow);
         }
     }
+/*
+    //just front and back for now
+    _setCoverPosition(){
+        Main.layoutManager.uiGroup.add_child(this.container);
+
+        
+        this.container.get_parent()?.remove_child(this.container);
+        if (this.settings.get_string('cover-behaviour') == "front"){
+            //Main.layoutManager.uiGroup.add_child(this.container);
+            Main.layoutManager.addChrome(this.container, { trackFullscreen: true });
+        }else{
+            Main.layoutManager.uiGroup.add_child(this.container);
+        }
+        
+    }
+
+    //for dynamic behavior in "back" setting
+    _containerEnterFunction(){
+        if (this.settings.get_string('cover-behaviour') == "back"){
+            this.container.get_parent()?.remove_child(this.container);
+            Main.layoutManager.addChrome(this.container, { trackFullscreen: true });
+        }
+    }
+    _containerLeaveFunction(){
+        if (this.settings.get_string('cover-behaviour') == "back"){
+             this.container.get_parent()?.remove_child(this.container);
+             Main.layoutManager.uiGroup.add_child(this.container);
+        }
+    }
+*/
 
     _setPosition(){
-        let _position = this.settings.get_string('position-on-screen');
+        let position = this.settings.get_string('position-on-screen');
         let monitor=Main.layoutManager.primaryMonitor;
         let topPanel=Main.panel;
         let verticalMargin=this.settings.get_int('margin-vertical');
         let horizontalMargin=this.settings.get_int('margin-horizontal');
-        if (_position=='top'){
-            this.container.set_position(horizontalMargin, topPanel.height+verticalMargin-1);
-        }else{ //bottom
-            this.container.set_position(horizontalMargin, monitor.height - this.sizingButton.height - verticalMargin);
+
+        let xPos=0;
+        let yPos=0;
+
+        let buttonMargin=this.settings.get_int('margin-buttons');//margin-right for position top and bottom, margin-bottom for left and right
+        let buttonRightMargin=0;
+        let buttonBottomMargin=0;
+        let scrollContainerHeight=0;
+        let scrollContainerWidth=0;
+
+        switch (position){
+            case 'top':
+                this._container.vertical = false;
+                buttonRightMargin=buttonMargin;
+                xPos=horizontalMargin;
+                yPos=topPanel.height+verticalMargin-1;
+                scrollContainerHeight=this.sizingButton.height;
+                scrollContainerWidth=monitor.width-(horizontalMargin*2);
+                this._useScrollPiping=true;
+                break;
+            case 'bottom':
+                this._container.vertical = false;
+                buttonRightMargin=buttonMargin;
+                xPos=horizontalMargin;
+                yPos=monitor.height - this.sizingButton.height - verticalMargin;
+                scrollContainerHeight=this.sizingButton.height;
+                scrollContainerWidth=monitor.width-(horizontalMargin*2);
+                this._useScrollPiping=true;
+                break;
+            case 'left':
+                this._container.vertical = true;
+                buttonBottomMargin=buttonMargin;
+                xPos=horizontalMargin;
+                yPos=topPanel.height+verticalMargin-1;
+                scrollContainerHeight=monitor.height-topPanel.height-(verticalMargin*2);
+                scrollContainerWidth=this.sizingButton.width;
+                this._useScrollPiping=false;
+                break;
+            case 'right':
+                this._container.vertical = true;
+                buttonBottomMargin=buttonMargin;
+                xPos=monitor.width-this.sizingButton.width-horizontalMargin;
+                yPos=topPanel.height+verticalMargin-1;
+                scrollContainerHeight=monitor.height-topPanel.height-(verticalMargin*2);
+                scrollContainerWidth=this.sizingButton.width;
+                this._useScrollPiping=false;
+                break;
         }
+        this._scrollContainer.set_policy(St.PolicyType.NEVER, St.PolicyType.NEVER); //just scrollbar, not ablility to scroll
+        this._scrollContainer.set_position(xPos, yPos);
+        this._scrollContainer.width=scrollContainerWidth;
+        this._scrollContainer.height=scrollContainerHeight;
+
 
         //need to do this in ensure button, too.
-        let buttonMargin=this.settings.get_int('margin-buttons');
-        for (const child of this.container.get_children()) {
-            child.set_style('margin-right: '+buttonMargin+'px;');
+        //let buttonMargin=this.settings.get_int('margin-buttons');
+        for (const child of this._container.get_children()) {
+            child.set_style('margin-right: '+buttonRightMargin+'px; margin-bottom: '+buttonBottomMargin+'px;');
+            //child.width=150;
         }
 
     }
+
+    _scrollPiping(actor, event) {
+        //const hadj = this._scrollContainer?.hscroll?.adjustment;
+        const hadj = this._scrollContainer.get_hadjustment();
+        if (!hadj) return Clutter.EVENT_PROPAGATE;
+
+        const [dx, dy] = event.get_scroll_delta();
+        let newVal = hadj.value + dy * 40;
+        newVal = Math.max(hadj.lower, Math.min(newVal, hadj.upper - hadj.page_size));
+
+        hadj.set_value(newVal);
+
+        return Clutter.EVENT_STOP;
+    }
+    
 
     _resetWorkspaceButtonVisibility(){
         for (let [metaWindow, btn] of this.windowButtons) {
@@ -220,9 +358,9 @@ export default class MinimizedButtonsExtension extends Extension {
     _setOverviewVisibility(){
         let showInOverview = this.settings.get_boolean('show-in-overview');
         if (Main.overview.visible) {
-            this.container.visible = showInOverview;
+            this._container.visible = showInOverview;
         } else {
-            this.container.visible = true;
+            this._container.visible = true;
         }
     }
 
@@ -309,15 +447,16 @@ export default class MinimizedButtonsExtension extends Extension {
         this.windowSignals.clear();
 
         for (const btn of this.windowButtons.values()) {
-            this.container.remove_child(btn);
+            this._container.remove_child(btn);
         }
         this.windowButtons.clear();
 
-        if (this.container) {
-            this.container.destroy();
-            this.container = null;
+        if (this._container) {
+            this._container.destroy();
+            this._container = null;
         }
         this.settings = null;
+        
 
     }
 

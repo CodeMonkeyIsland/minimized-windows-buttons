@@ -49,7 +49,7 @@ export default class MinimizedWindowsButtonsPreferences extends ExtensionPrefere
             subtitle: 'Buttons appear at the top or bottom of main screen?'
         });
 
-        const options = ['top', 'bottom'];
+        const options = ['top', 'bottom', 'left', 'right'];
         combo.set_model(Gtk.StringList.new(options));
         const current = this.getSettings().get_string('position-on-screen');
         combo.set_selected(options.indexOf(current));
@@ -61,6 +61,38 @@ export default class MinimizedWindowsButtonsPreferences extends ExtensionPrefere
 
         group.add(combo);
         window._settings.bind('position-on-screen', combo, 'active', Gio.SettingsBindFlags.DEFAULT);
+
+
+        //cover behavior
+        const coverCombo = new Adw.ComboRow({
+            title: 'Cover behaviour',
+            subtitle: 'front: Buttons cover Windows, \nback:Windows cover Buttons, but all buttons come to front, when pointer hovers over one'
+        });
+
+        const coverOptions = ['front', 'back'];
+        coverCombo.set_model(Gtk.StringList.new(coverOptions));
+
+        const coverCurrent = this.getSettings().get_string('cover-behaviour');
+        coverCombo.set_selected(coverOptions.indexOf(coverCurrent));
+
+        //let i= coverOptions.indexOf(coverCurrent);
+
+        //aargh
+        /*
+        if (i==0 || i==1){
+            coverCombo.set_selected(coverOptions.indexOf(coverCurrent));
+        }else{
+            coverCombo.set_selected(0);
+        }
+        */
+
+        coverCombo.connect('notify::selected', () => {
+            const newValue = coverOptions[coverCombo.selected];
+            this.getSettings().set_string('cover-behaviour', newValue);
+        });
+
+        group.add(coverCombo);
+        window._settings.bind('cover-behaviour', coverCombo, 'active', Gio.SettingsBindFlags.DEFAULT);
 
 
 
