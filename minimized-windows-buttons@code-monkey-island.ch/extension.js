@@ -14,6 +14,7 @@ export default class MinimizedButtonsExtension extends Extension {
 
     _scrollOverwriteSig=0;
     _useScrollPiping=false;
+    _autohideActive=false;
     displaySig=0;
     sessionSig=0;
     workspaceSig=0;
@@ -25,6 +26,10 @@ export default class MinimizedButtonsExtension extends Extension {
     sizingButton=null;
 
     settings=null;
+
+    _resizeSignal =null;
+    _positionSignal=null;
+
 
     enable() {
 
@@ -46,27 +51,25 @@ export default class MinimizedButtonsExtension extends Extension {
             enable_mouse_scrolling: true,
             x_expand: true,
             y_expand: true,
+            reactive: false,
             style_class: "button-scroll-container"
         });
         this._scrollContainer.add_child(this._container);
 
-/*
+        this._scrollContainer.ease({
+            opacity: this._isContainerCoveredByActiveWindow() ? 0 : 255,
+            duration: 200,
+        });
+
+
         //what covers what chrome=front
         this._setCoverPosition();
         this.settings.connect('changed::cover-behaviour', () => {
             this._setCoverPosition();
         });
-*/
-        Main.layoutManager.addChrome(this._scrollContainer, { trackFullscreen: true });
 
-/*
-        this.container.connect('enter-event', () => {
-            _containerEnterFunction();
-        });
-        this.container.connect('enter-event', () => {
-            _containerLeaveFunction();
-        });
-*/
+        let focusSignal = global.display.connect('notify::focus-window', () => this._updateVisibilityActiveWindow() );
+
 
         //hide or show on overview?
         Main.overview.connect('showing', () => this._setOverviewVisibility());
@@ -217,36 +220,37 @@ export default class MinimizedButtonsExtension extends Extension {
             this.windowButtons.delete(metaWindow);
         }
     }
-/*
-    //just front and back for now
+
     _setCoverPosition(){
-        Main.layoutManager.uiGroup.add_child(this.container);
+        Main.layoutManager.removeChrome(this._scrollContainer);
 
-        
-        this.container.get_parent()?.remove_child(this.container);
         if (this.settings.get_string('cover-behaviour') == "front"){
-            //Main.layoutManager.uiGroup.add_child(this.container);
-            Main.layoutManager.addChrome(this.container, { trackFullscreen: true });
-        }else{
-            Main.layoutManager.uiGroup.add_child(this.container);
+            Main.layoutManager.addChrome(this._scrollContainer,{
+                affectsInputRegion: false,
+                trackFullscreen: true,
+                affectsStruts: false
+            });
+            this._autohideActive=false;
+        }else if(this.settings.get_string('cover-behaviour') == "leave space"){
+            Main.layoutManager.addChrome(this._scrollContainer,{
+                affectsInputRegion: false,
+                trackFullscreen: true,
+                affectsStruts: true
+            });
+            this._autohideActive=false;
+        }else if(this.settings.get_string('cover-behaviour') == "autohide"){
+            Main.layoutManager.addChrome(this._scrollContainer,{
+                affectsInputRegion: false,
+                trackFullscreen: true,
+                affectsStruts: false
+            });
+            this._autohideActive=true;
         }
+        this._scrollContainer.queue_relayout();
+
+        this._updateVisibilityActiveWindow();
         
     }
-
-    //for dynamic behavior in "back" setting
-    _containerEnterFunction(){
-        if (this.settings.get_string('cover-behaviour') == "back"){
-            this.container.get_parent()?.remove_child(this.container);
-            Main.layoutManager.addChrome(this.container, { trackFullscreen: true });
-        }
-    }
-    _containerLeaveFunction(){
-        if (this.settings.get_string('cover-behaviour') == "back"){
-             this.container.get_parent()?.remove_child(this.container);
-             Main.layoutManager.uiGroup.add_child(this.container);
-        }
-    }
-*/
 
     _setPosition(){
         let position = this.settings.get_string('position-on-screen');
@@ -268,37 +272,41 @@ export default class MinimizedButtonsExtension extends Extension {
             case 'top':
                 this._container.vertical = false;
                 buttonRightMargin=buttonMargin;
-                xPos=horizontalMargin;
-                yPos=topPanel.height+verticalMargin-1;
-                scrollContainerHeight=this.sizingButton.height;
-                scrollContainerWidth=monitor.width-(horizontalMargin*2);
+                xPos=0;
+                yPos=0;
+                scrollContainerHeight=this.sizingButton.height+verticalMargin*2+topPanel.height;
+                scrollContainerWidth=monitor.width;
+                this._scrollContainer.set_style('padding: '+(verticalMargin+topPanel.height)+'px '+horizontalMargin+'px '+verticalMargin+'px '+horizontalMargin+'px;');
                 this._useScrollPiping=true;
                 break;
             case 'bottom':
                 this._container.vertical = false;
                 buttonRightMargin=buttonMargin;
-                xPos=horizontalMargin;
-                yPos=monitor.height - this.sizingButton.height - verticalMargin;
-                scrollContainerHeight=this.sizingButton.height;
-                scrollContainerWidth=monitor.width-(horizontalMargin*2);
+                xPos=0;
+                yPos=monitor.height - this.sizingButton.height - verticalMargin*2;
+                scrollContainerHeight=this.sizingButton.height + verticalMargin*2;
+                scrollContainerWidth=monitor.width;
+                this._scrollContainer.set_style('padding: '+verticalMargin+'px '+horizontalMargin+'px '+verticalMargin+'px '+horizontalMargin+'px;');
                 this._useScrollPiping=true;
                 break;
             case 'left':
                 this._container.vertical = true;
                 buttonBottomMargin=buttonMargin;
-                xPos=horizontalMargin;
-                yPos=topPanel.height+verticalMargin-1;
-                scrollContainerHeight=monitor.height-topPanel.height-(verticalMargin*2);
-                scrollContainerWidth=this.sizingButton.width;
+                xPos=0;
+                yPos=0;
+                scrollContainerHeight=monitor.height;
+                scrollContainerWidth=this.sizingButton.width+horizontalMargin*2;
+                this._scrollContainer.set_style('padding: '+(verticalMargin+topPanel.height)+'px '+horizontalMargin+'px '+verticalMargin+'px '+horizontalMargin+'px;');
                 this._useScrollPiping=false;
                 break;
             case 'right':
                 this._container.vertical = true;
                 buttonBottomMargin=buttonMargin;
-                xPos=monitor.width-this.sizingButton.width-horizontalMargin;
-                yPos=topPanel.height+verticalMargin-1;
-                scrollContainerHeight=monitor.height-topPanel.height-(verticalMargin*2);
-                scrollContainerWidth=this.sizingButton.width;
+                xPos=monitor.width-this.sizingButton.width-horizontalMargin*2;
+                yPos=0;
+                scrollContainerHeight=monitor.height;
+                scrollContainerWidth=this.sizingButton.width+horizontalMargin*2;
+                this._scrollContainer.set_style('padding: '+(verticalMargin+topPanel.height)+'px '+horizontalMargin+'px '+verticalMargin+'px '+horizontalMargin+'px;');
                 this._useScrollPiping=false;
                 break;
         }
@@ -306,6 +314,8 @@ export default class MinimizedButtonsExtension extends Extension {
         this._scrollContainer.set_position(xPos, yPos);
         this._scrollContainer.width=scrollContainerWidth;
         this._scrollContainer.height=scrollContainerHeight;
+
+        this._scrollContainer.queue_relayout();
 
 
         //need to do this in ensure button, too.
@@ -318,7 +328,6 @@ export default class MinimizedButtonsExtension extends Extension {
     }
 
     _scrollPiping(actor, event) {
-        //const hadj = this._scrollContainer?.hscroll?.adjustment;
         const hadj = this._scrollContainer.get_hadjustment();
         if (!hadj) return Clutter.EVENT_PROPAGATE;
 
@@ -330,7 +339,106 @@ export default class MinimizedButtonsExtension extends Extension {
 
         return Clutter.EVENT_STOP;
     }
+
+    _updateVisibilityActiveWindow() {
+
+        if (!this._scrollContainer){return};
+
+        this._disconnectWindowDragAndRezizeSignals();
+
+        if (this._autohideActive){
+            let win = global.display.get_focus_window();
+            if (!win) {
+                console.log('no window');
+                return false;
+            }
+            this._resizeSignal = win.connect('size-changed', () => {
+                this._updateVisibilityActiveWindow();
+            });
+
+            // Connect to position-changed
+            this._positionSignal = win.connect('position-changed', () => {
+                this._updateVisibilityActiveWindow();
+            });
+
+            if (this._isContainerCoveredByActiveWindow()) {
+                console.log('hide');
+                this._scrollContainer.hide();
+            } else {
+                console.log('show');
+                this._scrollContainer.show();
+            }
+        }else{
+            this._scrollContainer.show();
+        }
+    }
     
+    _isContainerCoveredByActiveWindow() {
+        if (!this._scrollContainer) {return false;}
+
+        let activeWin = global.display.get_focus_window();
+        if (!activeWin) {
+            console.log('no window');
+            return false;
+        }
+
+        // skip panels, docks, and non-normal windows
+        /*
+        if (activeWin.window_type !== Meta.WindowType.NORMAL || activeWin.skip_taskbar){
+            return false;
+        }
+        */
+        
+        const [x, y] = this._scrollContainer.get_transformed_position();
+        //const extents = this._scrollContainer.get_transformed_extents();
+        const containerRect = {
+            x1: x,
+            y1: y,
+            x2: x + this._scrollContainer.width,
+            y2: y + this._scrollContainer.height,
+        };
+        const windowRectRaw = activeWin.get_frame_rect();
+        const windowRect = {
+            x1: windowRectRaw.x,
+            y1: windowRectRaw.y,
+            x2: windowRectRaw.x + windowRectRaw.width,
+            y2: windowRectRaw.y + windowRectRaw.height,
+        };
+/*
+        console.log('container:');
+        console.log('x1: '+containerRect.x1+' x2: '+containerRect.x2);
+        console.log('y1: '+containerRect.y1+' y2: '+containerRect.y2);
+
+        console.log('window:');
+        console.log('x1: '+windowRect.x+' x2: '+windowRect.y);
+        console.log('width: '+windowRect.width+' height: '+windowRect.height);
+*/
+        console.log('container:', containerRect);
+        console.log('window:', windowRect);
+
+        // Return true if the rectangles overlap at all
+        return !(
+            containerRect.x2 < windowRect.x1 || // container is left of window
+            containerRect.x1 > windowRect.x2 || // container is right of window
+            containerRect.y2 < windowRect.y1 || // container is above window
+            containerRect.y1 > windowRect.y2    // container is below window
+        );
+
+    }
+
+    _disconnectWindowDragAndRezizeSignals(){
+        const win = global.display.focus_window;
+        if (win) {
+            if (this._resizeSignal) {
+                win.disconnect(this._resizeSignal);
+                this._resizeSignal = null;
+            }
+            if (this._positionSignal) {
+                win.disconnect(this._positionSignal);
+                this._positionSignal = null;
+            }
+        }
+    }
 
     _resetWorkspaceButtonVisibility(){
         for (let [metaWindow, btn] of this.windowButtons) {

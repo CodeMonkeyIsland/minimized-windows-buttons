@@ -8,7 +8,7 @@ import {ExtensionPreferences, gettext as _} from 'resource:///org/gnome/Shell/Ex
 export default class MinimizedWindowsButtonsPreferences extends ExtensionPreferences {
 
     fillPreferencesWindow(window) {
-        // Create a preferences page, with a single group
+
         const page = new Adw.PreferencesPage({
             title: _('General'),
             icon_name: 'dialog-information-symbolic',
@@ -27,10 +27,9 @@ export default class MinimizedWindowsButtonsPreferences extends ExtensionPrefere
             subtitle: _('Whether to show buttons in overview'),
         });
         group.add(row);
-
-        //bind the row to settings
         window._settings = this.getSettings();
         window._settings.bind('show-in-overview', row, 'active', Gio.SettingsBindFlags.DEFAULT);
+
 
         // stick to workspace or always visible
         const rowWS = new Adw.SwitchRow({
@@ -66,25 +65,14 @@ export default class MinimizedWindowsButtonsPreferences extends ExtensionPrefere
         //cover behavior
         const coverCombo = new Adw.ComboRow({
             title: 'Cover behaviour',
-            subtitle: 'front: Buttons cover Windows, \nback:Windows cover Buttons, but all buttons come to front, when pointer hovers over one'
+            subtitle: 'front: Buttons cover Windows, \nleave space:Workarea gets adjusted to leave space for the buttons'
         });
 
-        const coverOptions = ['front', 'back'];
+        const coverOptions = ['front', 'leave space', 'autohide'];
         coverCombo.set_model(Gtk.StringList.new(coverOptions));
 
         const coverCurrent = this.getSettings().get_string('cover-behaviour');
         coverCombo.set_selected(coverOptions.indexOf(coverCurrent));
-
-        //let i= coverOptions.indexOf(coverCurrent);
-
-        //aargh
-        /*
-        if (i==0 || i==1){
-            coverCombo.set_selected(coverOptions.indexOf(coverCurrent));
-        }else{
-            coverCombo.set_selected(0);
-        }
-        */
 
         coverCombo.connect('notify::selected', () => {
             const newValue = coverOptions[coverCombo.selected];
@@ -184,7 +172,7 @@ export default class MinimizedWindowsButtonsPreferences extends ExtensionPrefere
         //button margins
         const row3 = new Adw.ActionRow({
             title: 'Button margins',
-            subtitle: 'margin-right of buttons',
+            subtitle: 'margin between buttons',
         });
 
         const adjustment3 = new Gtk.Adjustment({
