@@ -3,6 +3,8 @@ import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import Shell from 'gi://Shell';
 
+import GLib from 'gi://GLib';
+
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 
@@ -15,36 +17,40 @@ export default class MinimizedButtonsExtension extends Extension {
     _scrollOverwriteSig=0;
     _useScrollPiping=false;
     _autohideActive=false;
-    displaySig=0;
-    sessionSig=0;
-    workspaceSig=0;
+    _displaySig=0;
+    _sessionSig=0;
+    _workspaceSig=0;
 
-    windowSignals=new Map();
-    windowButtons=new Map();
-    windowWorkspaces=new Map();
+    _focusSignal=null;
 
-    sizingButton=null;
+    _windowSignals=new Map();
+    _windowButtons=new Map();
+    _windowWorkspaces=new Map();
 
-    settings=null;
+    _sizingButton=null;
 
     _resizeSignal =null;
     _positionSignal=null;
+
+    _oldFocusWindow=null;
+    _autohide_showSignal=null;
+    _autohide_leaveSignal=null;
+    _autohide_detect_container=null;
+    _autohide_always=false;
+    settings=null;
 
 
     enable() {
 
         this.settings=this.getSettings();
 
-        this.sessionSig = Main.sessionMode.connect('updated', () => {
+        this._sessionSig = Main.sessionMode.connect('updated', () => {
             for (const actor of global.get_window_actors()){
                 this._watchWindow(actor.meta_window);
             }
         });
 
-        this._container = new St.BoxLayout({
-            vertical: false, //            reactive: true, ?
-            style_class: "bottom-container"
-        });
+        this._container = new St.BoxLayout();
 
         this._scrollContainer = new St.ScrollView({
             overlay_scrollbars: false,
@@ -56,20 +62,27 @@ export default class MinimizedButtonsExtension extends Extension {
         });
         this._scrollContainer.add_child(this._container);
 
-        this._scrollContainer.ease({
-            opacity: this._isContainerCoveredByActiveWindow() ? 0 : 255,
-            duration: 200,
+
+        //what covers what
+        this._autohide_detect_container = new St.BoxLayout({
+            reactive: true, //to get hover events
+            x_expand: false,
+            y_expand: false,
         });
-
-
-        //what covers what chrome=front
+        Main.layoutManager.addChrome(this._autohide_detect_container, {
+                affectsInputRegion: false,
+                trackFullscreen: true,
+                affectsStruts: false
+        });
         this._setCoverPosition();
         this.settings.connect('changed::cover-behaviour', () => {
             this._setCoverPosition();
         });
-
-        let focusSignal = global.display.connect('notify::focus-window', () => this._updateVisibilityActiveWindow() );
-
+        //decide what to do inside the function, calling it at any cover-behaviour
+        this._focusSignal = global.display.connect('notify::focus-window', () => this._focusWindowChange() );
+        this.settings.connect('changed::autohide-container-size', () => {
+            this._setAutohideDefaultSize();
+        });
 
         //hide or show on overview?
         Main.overview.connect('showing', () => this._setOverviewVisibility());
@@ -78,7 +91,7 @@ export default class MinimizedButtonsExtension extends Extension {
 
 
         //per workspace
-        this.workspaceSig = global.workspace_manager.connect(
+        this._workspaceSig = global.workspace_manager.connect(
             'active-workspace-changed',
             () => this._setWorkspaceButtonVisibility()
         );
@@ -88,9 +101,9 @@ export default class MinimizedButtonsExtension extends Extension {
 
 
         // Create button for sizing, then hide it
-        this.sizingButton = new St.Button({ label: 'Hello', style_class: 'minimized-button' });
-        this._container.add_child(this.sizingButton);
-        this.sizingButton.hide();
+        this._sizingButton = new St.Button({ label: 'Hello', style_class: 'minimized-button' });
+        this._container.add_child(this._sizingButton);
+        this._sizingButton.hide();
 
         this._scrollPiper = this._scrollPiping.bind(this);
 
@@ -115,11 +128,11 @@ export default class MinimizedButtonsExtension extends Extension {
             if (this._useScrollPiping) {
                 return this._scrollPiping(actor, event);
             }
-            return Clutter.EVENT_PROPAGATE;
+            return Clutter.EVENT_STOP;
         });
 
         //new windows
-        this.displaySig = global.display.connect('window-created', (_d, metaWindow) => this._watchWindow(metaWindow));
+        this._displaySig = global.display.connect('window-created', (_d, metaWindow) => this._watchWindow(metaWindow));
 
         //existing windows
         for (const actor of global.get_window_actors()){
@@ -128,20 +141,24 @@ export default class MinimizedButtonsExtension extends Extension {
 
     }
 
+//---------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------basic functions-------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------
+
     _watchWindow(metaWindow) {
-        if (!metaWindow || this.windowSignals.has(metaWindow)){
+        if (!metaWindow || this._windowSignals.has(metaWindow)){
             return;
         }
 
         const minimizedId = metaWindow.connect('notify::minimized', () => {
             if (metaWindow.minimized) {
-                this.windowWorkspaces.set(
+                this._windowWorkspaces.set(
                     metaWindow,
                     metaWindow.get_workspace().index()
                 );
                 this._ensureButton(metaWindow);
             } else {
-                this.windowWorkspaces.delete(metaWindow);
+                this._windowWorkspaces.delete(metaWindow);
                 this._removeButton(metaWindow);
             }
         });
@@ -151,7 +168,7 @@ export default class MinimizedButtonsExtension extends Extension {
             this._unwatchWindow(metaWindow);
         });
 
-        this.windowSignals.set(metaWindow, { minimized: minimizedId, unmanaged: unmanagedId });
+        this._windowSignals.set(metaWindow, { minimized: minimizedId, unmanaged: unmanagedId });
 
         //initial check
         if (metaWindow.minimized) {
@@ -159,8 +176,16 @@ export default class MinimizedButtonsExtension extends Extension {
         }
     }
 
+    _unwatchWindow(metaWindow) {
+        const ids = this._windowSignals.get(metaWindow);
+        if (!ids) {return;}
+        metaWindow.disconnect(ids.minimized);
+        metaWindow.disconnect(ids.unmanaged);
+        this._windowSignals.delete(metaWindow);
+    }
+
     _ensureButton(metaWindow) {
-        if (this.windowButtons.has(metaWindow)) {return};
+        if (this._windowButtons.has(metaWindow)) {return};
 
         let gicon = this._getWindowGicon(metaWindow);
         let icon = new St.Icon({ gicon, style_class: 'button-icon' });
@@ -185,7 +210,9 @@ export default class MinimizedButtonsExtension extends Extension {
             style_class: 'minimized-button',
             child: content,
             x_expand: false,
-            y_align: Clutter.ActorAlign.CENTER
+            y_expand:false,
+            y_align: Clutter.ActorAlign.START,
+            x_align: Clutter.ActorAlign.START
         });
 
         this._container.add_child(btn);
@@ -207,273 +234,22 @@ export default class MinimizedButtonsExtension extends Extension {
             btn.set_style('width: 150px; margin-bottom: '+buttonMargin+'px; margin-right: 0px;');
         }
 
-        this.windowButtons.set(metaWindow, btn);
+        this._windowButtons.set(metaWindow, btn);
 
         this._setWorkspaceButtonVisibility();
 
     }
 
     _removeButton(metaWindow) {
-        const btn = this.windowButtons.get(metaWindow);
+        const btn = this._windowButtons.get(metaWindow);
         if (btn) {
             this._container.remove_child(btn);
-            this.windowButtons.delete(metaWindow);
-        }
-    }
-
-    _setCoverPosition(){
-        Main.layoutManager.removeChrome(this._scrollContainer);
-
-        if (this.settings.get_string('cover-behaviour') == "front"){
-            Main.layoutManager.addChrome(this._scrollContainer,{
-                affectsInputRegion: false,
-                trackFullscreen: true,
-                affectsStruts: false
-            });
-            this._autohideActive=false;
-        }else if(this.settings.get_string('cover-behaviour') == "leave space"){
-            Main.layoutManager.addChrome(this._scrollContainer,{
-                affectsInputRegion: false,
-                trackFullscreen: true,
-                affectsStruts: true
-            });
-            this._autohideActive=false;
-        }else if(this.settings.get_string('cover-behaviour') == "autohide"){
-            Main.layoutManager.addChrome(this._scrollContainer,{
-                affectsInputRegion: false,
-                trackFullscreen: true,
-                affectsStruts: false
-            });
-            this._autohideActive=true;
-        }
-        this._scrollContainer.queue_relayout();
-
-        this._updateVisibilityActiveWindow();
-        
-    }
-
-    _setPosition(){
-        let position = this.settings.get_string('position-on-screen');
-        let monitor=Main.layoutManager.primaryMonitor;
-        let topPanel=Main.panel;
-        let verticalMargin=this.settings.get_int('margin-vertical');
-        let horizontalMargin=this.settings.get_int('margin-horizontal');
-
-        let xPos=0;
-        let yPos=0;
-
-        let buttonMargin=this.settings.get_int('margin-buttons');//margin-right for position top and bottom, margin-bottom for left and right
-        let buttonRightMargin=0;
-        let buttonBottomMargin=0;
-        let scrollContainerHeight=0;
-        let scrollContainerWidth=0;
-
-        switch (position){
-            case 'top':
-                this._container.vertical = false;
-                buttonRightMargin=buttonMargin;
-                xPos=0;
-                yPos=0;
-                scrollContainerHeight=this.sizingButton.height+verticalMargin*2+topPanel.height;
-                scrollContainerWidth=monitor.width;
-                this._scrollContainer.set_style('padding: '+(verticalMargin+topPanel.height)+'px '+horizontalMargin+'px '+verticalMargin+'px '+horizontalMargin+'px;');
-                this._useScrollPiping=true;
-                break;
-            case 'bottom':
-                this._container.vertical = false;
-                buttonRightMargin=buttonMargin;
-                xPos=0;
-                yPos=monitor.height - this.sizingButton.height - verticalMargin*2;
-                scrollContainerHeight=this.sizingButton.height + verticalMargin*2;
-                scrollContainerWidth=monitor.width;
-                this._scrollContainer.set_style('padding: '+verticalMargin+'px '+horizontalMargin+'px '+verticalMargin+'px '+horizontalMargin+'px;');
-                this._useScrollPiping=true;
-                break;
-            case 'left':
-                this._container.vertical = true;
-                buttonBottomMargin=buttonMargin;
-                xPos=0;
-                yPos=0;
-                scrollContainerHeight=monitor.height;
-                scrollContainerWidth=this.sizingButton.width+horizontalMargin*2;
-                this._scrollContainer.set_style('padding: '+(verticalMargin+topPanel.height)+'px '+horizontalMargin+'px '+verticalMargin+'px '+horizontalMargin+'px;');
-                this._useScrollPiping=false;
-                break;
-            case 'right':
-                this._container.vertical = true;
-                buttonBottomMargin=buttonMargin;
-                xPos=monitor.width-this.sizingButton.width-horizontalMargin*2;
-                yPos=0;
-                scrollContainerHeight=monitor.height;
-                scrollContainerWidth=this.sizingButton.width+horizontalMargin*2;
-                this._scrollContainer.set_style('padding: '+(verticalMargin+topPanel.height)+'px '+horizontalMargin+'px '+verticalMargin+'px '+horizontalMargin+'px;');
-                this._useScrollPiping=false;
-                break;
-        }
-        this._scrollContainer.set_policy(St.PolicyType.NEVER, St.PolicyType.NEVER); //just scrollbar, not ablility to scroll
-        this._scrollContainer.set_position(xPos, yPos);
-        this._scrollContainer.width=scrollContainerWidth;
-        this._scrollContainer.height=scrollContainerHeight;
-
-        this._scrollContainer.queue_relayout();
-
-
-        //need to do this in ensure button, too.
-        //let buttonMargin=this.settings.get_int('margin-buttons');
-        for (const child of this._container.get_children()) {
-            child.set_style('margin-right: '+buttonRightMargin+'px; margin-bottom: '+buttonBottomMargin+'px;');
-            //child.width=150;
-        }
-
-    }
-
-    _scrollPiping(actor, event) {
-        const hadj = this._scrollContainer.get_hadjustment();
-        if (!hadj) return Clutter.EVENT_PROPAGATE;
-
-        const [dx, dy] = event.get_scroll_delta();
-        let newVal = hadj.value + dy * 40;
-        newVal = Math.max(hadj.lower, Math.min(newVal, hadj.upper - hadj.page_size));
-
-        hadj.set_value(newVal);
-
-        return Clutter.EVENT_STOP;
-    }
-
-    _updateVisibilityActiveWindow() {
-
-        if (!this._scrollContainer){return};
-
-        this._disconnectWindowDragAndRezizeSignals();
-
-        if (this._autohideActive){
-            let win = global.display.get_focus_window();
-            if (!win) {
-                console.log('no window');
-                return false;
-            }
-            this._resizeSignal = win.connect('size-changed', () => {
-                this._updateVisibilityActiveWindow();
-            });
-
-            // Connect to position-changed
-            this._positionSignal = win.connect('position-changed', () => {
-                this._updateVisibilityActiveWindow();
-            });
-
-            if (this._isContainerCoveredByActiveWindow()) {
-                console.log('hide');
-                this._scrollContainer.hide();
-            } else {
-                console.log('show');
-                this._scrollContainer.show();
-            }
-        }else{
-            this._scrollContainer.show();
-        }
-    }
-    
-    _isContainerCoveredByActiveWindow() {
-        if (!this._scrollContainer) {return false;}
-
-        let activeWin = global.display.get_focus_window();
-        if (!activeWin) {
-            console.log('no window');
-            return false;
-        }
-
-        // skip panels, docks, and non-normal windows
-        /*
-        if (activeWin.window_type !== Meta.WindowType.NORMAL || activeWin.skip_taskbar){
-            return false;
-        }
-        */
-        
-        const [x, y] = this._scrollContainer.get_transformed_position();
-        //const extents = this._scrollContainer.get_transformed_extents();
-        const containerRect = {
-            x1: x,
-            y1: y,
-            x2: x + this._scrollContainer.width,
-            y2: y + this._scrollContainer.height,
-        };
-        const windowRectRaw = activeWin.get_frame_rect();
-        const windowRect = {
-            x1: windowRectRaw.x,
-            y1: windowRectRaw.y,
-            x2: windowRectRaw.x + windowRectRaw.width,
-            y2: windowRectRaw.y + windowRectRaw.height,
-        };
-/*
-        console.log('container:');
-        console.log('x1: '+containerRect.x1+' x2: '+containerRect.x2);
-        console.log('y1: '+containerRect.y1+' y2: '+containerRect.y2);
-
-        console.log('window:');
-        console.log('x1: '+windowRect.x+' x2: '+windowRect.y);
-        console.log('width: '+windowRect.width+' height: '+windowRect.height);
-*/
-        console.log('container:', containerRect);
-        console.log('window:', windowRect);
-
-        // Return true if the rectangles overlap at all
-        return !(
-            containerRect.x2 < windowRect.x1 || // container is left of window
-            containerRect.x1 > windowRect.x2 || // container is right of window
-            containerRect.y2 < windowRect.y1 || // container is above window
-            containerRect.y1 > windowRect.y2    // container is below window
-        );
-
-    }
-
-    _disconnectWindowDragAndRezizeSignals(){
-        const win = global.display.focus_window;
-        if (win) {
-            if (this._resizeSignal) {
-                win.disconnect(this._resizeSignal);
-                this._resizeSignal = null;
-            }
-            if (this._positionSignal) {
-                win.disconnect(this._positionSignal);
-                this._positionSignal = null;
-            }
-        }
-    }
-
-    _resetWorkspaceButtonVisibility(){
-        for (let [metaWindow, btn] of this.windowButtons) {
-             btn.visible=true;
-        }
-        _setWorkspaceButtonVisibility();
-    }
-
-    _setWorkspaceButtonVisibility(){
-        if (this.settings.get_boolean('per-workspace-buttons')){
-            let currentWorkspaceNr=global.workspace_manager.get_active_workspace().index();
-            for (let [metaWindow, btn] of this.windowButtons) {
-                let windowWorkspaceNr = this.windowWorkspaces.get(metaWindow);
-                if (windowWorkspaceNr==currentWorkspaceNr){
-                    btn.visible=true;
-                }else{
-                    btn.visible=false;
-                }
-            }
-        }else{
-            //do nothing
-        }
-    }
-
-    _setOverviewVisibility(){
-        let showInOverview = this.settings.get_boolean('show-in-overview');
-        if (Main.overview.visible) {
-            this._container.visible = showInOverview;
-        } else {
-            this._container.visible = true;
+            this._windowButtons.delete(metaWindow);
         }
     }
 
     _getWindowGicon(metaWindow) {
-    	try{
+        try{
             let gicon = null;
             let app = null;
             let giconName = null;
@@ -518,46 +294,409 @@ export default class MinimizedButtonsExtension extends Extension {
             return gicon;
 
         }catch(e){
-        	console.error(e);
+            console.error(e);
         }
         return new Gio.ThemedIcon({ name: 'application-x-executable' });
     }
 
-    _unwatchWindow(metaWindow) {
-        const ids = this.windowSignals.get(metaWindow);
-        if (!ids) {return;}
-        metaWindow.disconnect(ids.minimized);
-        metaWindow.disconnect(ids.unmanaged);
-        this.windowSignals.delete(metaWindow);
+//---------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------setting: Position and margins-----------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------
+    _setPosition(){
+        let position = this.settings.get_string('position-on-screen');
+        let monitor=Main.layoutManager.primaryMonitor;
+        let topPanel=Main.panel;
+        let verticalMargin=this.settings.get_int('margin-vertical');
+        let horizontalMargin=this.settings.get_int('margin-horizontal');
+
+        let xPos=0;
+        let yPos=0;
+
+        let buttonMargin=this.settings.get_int('margin-buttons');//margin-right for position top and bottom, margin-bottom for left and right
+        let buttonRightMargin=0;
+        let buttonBottomMargin=0;
+        let scrollContainerHeight=0;
+        let scrollContainerWidth=0;
+
+        switch (position){
+            case 'top':
+                this._scrollContainer.set_layout_manager(new Clutter.BoxLayout({orientation: Clutter.Orientation.HORIZONTAL}));
+
+                buttonRightMargin=buttonMargin;
+                xPos=0;
+                yPos=0;
+                scrollContainerHeight=this._sizingButton.height+verticalMargin*2+topPanel.height;
+                scrollContainerWidth=monitor.width;
+                this._container.set_layout_manager(new Clutter.BoxLayout({ orientation: Clutter.Orientation.HORIZONTAL}));
+                this._scrollContainer.set_style('padding: '+(verticalMargin+topPanel.height)+'px '+horizontalMargin+'px '+verticalMargin+'px '+horizontalMargin+'px;');
+                this._useScrollPiping=true;
+                break;
+            case 'bottom':
+                this._scrollContainer.set_layout_manager(new Clutter.BoxLayout({orientation: Clutter.Orientation.HORIZONTAL}));
+                buttonRightMargin=buttonMargin;
+                xPos=0;
+                yPos=monitor.height - this._sizingButton.height - verticalMargin*2;
+                scrollContainerHeight=this._sizingButton.height + verticalMargin*2;
+                scrollContainerWidth=monitor.width;
+                this._container.set_layout_manager(new Clutter.BoxLayout({ orientation: Clutter.Orientation.HORIZONTAL}));
+                this._scrollContainer.set_style('padding: '+verticalMargin+'px '+horizontalMargin+'px '+verticalMargin+'px '+horizontalMargin+'px;');
+                this._useScrollPiping=true;
+                break;
+            case 'left':
+                this._scrollContainer.set_layout_manager(new Clutter.BoxLayout({orientation: Clutter.Orientation.VERTICAL}));
+                buttonBottomMargin=buttonMargin;
+                xPos=0;
+                yPos=topPanel.height;
+                scrollContainerHeight=monitor.height-topPanel.height;
+                scrollContainerWidth=this._sizingButton.width+horizontalMargin*2;
+                this._container.set_layout_manager(new Clutter.BoxLayout({ orientation: Clutter.Orientation.VERTICAL}));
+                this._scrollContainer.set_style('padding: '+verticalMargin+'px '+horizontalMargin+'px '+verticalMargin+'px '+horizontalMargin+'px;');
+                this._useScrollPiping=false;
+                break;
+            case 'right':
+                this._scrollContainer.set_layout_manager(new Clutter.BoxLayout({orientation: Clutter.Orientation.VERTICAL}));
+                buttonBottomMargin=buttonMargin;
+                xPos=monitor.width-this._sizingButton.width-horizontalMargin*2;
+                yPos=topPanel.height;
+                scrollContainerHeight=monitor.height-topPanel.height;
+                scrollContainerWidth=this._sizingButton.width+horizontalMargin*2;
+                this._container.set_layout_manager(new Clutter.BoxLayout({ orientation: Clutter.Orientation.VERTICAL}));
+                this._scrollContainer.set_style('padding: '+verticalMargin+'px '+horizontalMargin+'px '+verticalMargin+'px '+horizontalMargin+'px;');
+                this._useScrollPiping=false;
+                break;
+        }
+        this._scrollContainer.set_policy(St.PolicyType.NEVER, St.PolicyType.NEVER); //just scrollbar, not ablility to scroll
+        this._scrollContainer.set_position(xPos, yPos);
+        this._scrollContainer.width=scrollContainerWidth;
+        this._scrollContainer.height=scrollContainerHeight;
+
+        this._scrollContainer.queue_relayout();
+
+        //need to do this in ensure button, too.
+        for (const child of this._container.get_children()) {
+            child.set_style('margin-right: '+buttonRightMargin+'px; margin-bottom: '+buttonBottomMargin+'px;');
+        }
+
+        this._setupAutohideDetector();
+
+    }
+
+    //this triggers "clutter_event_get_scroll_delta: assertion 'event->scroll.direction == CLUTTER_SCROLL_SMOOTH' failed"
+    //think there is no way around it. (not doing this smooth...)
+    _scrollPiping(actor, event) {
+        const hadj = this._scrollContainer.get_hadjustment();
+        if (!hadj)  {return Clutter.EVENT_STOP;}
+
+        const [dx, dy] = event.get_scroll_delta();
+        let newVal = hadj.value + dy * 10;
+        newVal = Math.max(hadj.lower, Math.min(newVal, hadj.upper - hadj.page_size));
+
+        hadj.set_value(newVal);
+
+        return Clutter.EVENT_STOP;
+    }
+
+//---------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------setting: show on overview---------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------
+    _setOverviewVisibility(){
+        let showInOverview = this.settings.get_boolean('show-in-overview');
+        if (Main.overview.visible) {
+            this._container.visible = showInOverview;
+        } else {
+            this._container.visible = true;
+        }
+    }
+
+//---------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------setting: per workspace------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------
+    _resetWorkspaceButtonVisibility(){
+        for (let [metaWindow, btn] of this._windowButtons) {
+             btn.visible=true;
+        }
+        this._setWorkspaceButtonVisibility();
+    }
+
+    _setWorkspaceButtonVisibility(){
+        if (this.settings.get_boolean('per-workspace-buttons')){
+            let currentWorkspaceNr=global.workspace_manager.get_active_workspace().index();
+            for (let [metaWindow, btn] of this._windowButtons) {
+                let windowWorkspaceNr = this._windowWorkspaces.get(metaWindow);
+                if (windowWorkspaceNr==currentWorkspaceNr){
+                    btn.visible=true;
+                }else{
+                    btn.visible=false;
+                }
+            }
+        }else{
+            //do nothing
+        }
+    }
+
+
+//---------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------setting: cover behaviour----------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------
+
+    _setCoverPosition(){
+
+        Main.layoutManager.removeChrome(this._scrollContainer);
+
+        if (this.settings.get_string('cover-behaviour') == "front"){
+            this._scrollContainer.reactive = false;
+            Main.layoutManager.addChrome(this._scrollContainer,{
+                affectsInputRegion: false,
+                trackFullscreen: true,
+                affectsStruts: false
+            });
+            this._autohideActive=false;
+            this._autohide_always=false;
+        }else if(this.settings.get_string('cover-behaviour') == "leave space"){
+            this._scrollContainer.reactive = false;
+            Main.layoutManager.addChrome(this._scrollContainer,{
+                affectsInputRegion: false,
+                trackFullscreen: true,
+                affectsStruts: true
+            });
+            this._autohideActive=false;
+            this._autohide_always=false;
+        }else if(this.settings.get_string('cover-behaviour') == "autohide"){
+            this._scrollContainer.reactive = true;
+            Main.layoutManager.addChrome(this._scrollContainer,{
+                affectsInputRegion: true,
+                trackFullscreen: true,
+                affectsStruts: false
+            });
+            this._autohideActive=true;
+            this._autohide_always=false;
+        }else if (this.settings.get_string('cover-behaviour') == "autohide always"){
+            this._scrollContainer.reactive = true;
+            Main.layoutManager.addChrome(this._scrollContainer,{
+                affectsInputRegion: true,
+                trackFullscreen: true,
+                affectsStruts: false
+            });
+            this._autohideActive=true;
+            this._autohide_always=true;
+        }
+        this._setupAutohideDetector();
+        this._scrollContainer.queue_relayout();
+
+        //trigger reset and update in autohide
+        this._focusWindowChange();
+        
+    }
+
+    //this is a hover detect container. show buttons on hover! (wrong name?)
+    _setupAutohideDetector(){
+        this._disconnectAutohideSignals();
+        if (this._autohideActive){
+            
+            this._setAutohideDefaultSize();
+
+            this._autohide_showSignal=this._autohide_detect_container.connect('enter-event', () => {
+                this._scrollContainer.show();
+            });
+
+            if (this.settings.get_string('cover-behaviour') == "autohide"){
+                this._updateVisibilityActiveWindow();
+                this._autohide_leaveSignal=this._scrollContainer.connect('leave-event', () => {
+                    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
+                        if (!this._pointerInside(this._scrollContainer)) {
+                            this._updateVisibilityActiveWindow();
+                        }
+                        return GLib.SOURCE_REMOVE;
+                    });
+                });
+            }else if (this.settings.get_string('cover-behaviour') == "autohide always"){
+                this._scrollContainer.hide();
+                this._autohide_leaveSignal=this._scrollContainer.connect('leave-event', () => {
+                    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
+                        if (!this._pointerInside(this._scrollContainer)) {
+                            this._scrollContainer.hide();
+                        }
+                        return GLib.SOURCE_REMOVE;
+                    });
+                });
+            }
+
+        }else{
+            this._autohide_detect_container.hide();
+        }
+        this._autohide_detect_container.queue_relayout();
+    }
+
+    _pointerInside(actor) {
+        const [x, y] = global.get_pointer();
+        const box = actor.get_allocation_box();
+        return x >= box.x1 && 
+                x <= box.x2 && 
+                y >= box.y1 && 
+                y <= box.y2;
+    }
+
+    _setAutohideDefaultSize(){
+        let containerSize=this.settings.get_int('autohide-container-size');//5;
+        switch (this.settings.get_string('position-on-screen')){
+            case 'top':
+                this._autohide_detect_container.set_position(0, Main.panel.height);
+                this._autohide_detect_container.width=Main.layoutManager.primaryMonitor.width;
+                this._autohide_detect_container.height=containerSize;
+                break;
+            case 'bottom':
+                this._autohide_detect_container.set_position(0, Main.layoutManager.primaryMonitor.height-containerSize);
+                this._autohide_detect_container.width=Main.layoutManager.primaryMonitor.width;
+                this._autohide_detect_container.height=containerSize;
+                break;
+            case 'left':
+                this._autohide_detect_container.set_position(0, Main.panel.height);
+                this._autohide_detect_container.width=containerSize;
+                this._autohide_detect_container.height=Main.layoutManager.primaryMonitor.height-Main.panel.height;
+                break;
+            case 'right':
+                this._autohide_detect_container.set_position(Main.layoutManager.primaryMonitor.width-containerSize, Main.panel.height);
+                this._autohide_detect_container.width=containerSize;
+                this._autohide_detect_container.height=Main.layoutManager.primaryMonitor.height-Main.panel.height;
+                break;
+        }
+    }
+
+    _focusWindowChange(){
+        
+        if (this._autohideActive){
+            let win = global.display.get_focus_window();
+            if (!win) {
+                console.log('no window');
+                return false;
+            }
+            this._disconnectWindowDragAndRezizeSignals();
+            this._resizeSignal = win.connect('size-changed', () => {
+                this._updateVisibilityActiveWindow();
+            });
+
+            this._positionSignal = win.connect('position-changed', () => {
+                this._updateVisibilityActiveWindow();
+            });
+            this._oldFocusWindow=win;
+            this._updateVisibilityActiveWindow();
+        }
+    }
+
+    _updateVisibilityActiveWindow() {
+
+        if (!this._scrollContainer){return};
+
+        if (this._autohideActive){
+            if (this._autohide_always){
+                this._scrollContainer.hide();
+            }else{
+                if (this._isContainerCoveredByActiveWindow()) {
+                    this._scrollContainer.hide();
+                }else{
+                    this._scrollContainer.show();
+                }
+            }
+        }else{
+            this._scrollContainer.show();
+        }
+    }
+    
+    _isContainerCoveredByActiveWindow() {
+        if (!this._scrollContainer) {return false;}
+
+        let activeWin = global.display.get_focus_window();
+        if (!activeWin) {
+            console.log('no window');
+            return false;
+        }
+
+        let [x, y] = this._scrollContainer.get_transformed_position();
+        let containerRect = {
+            x1: x,
+            y1: y,
+            x2: x + this._scrollContainer.width,
+            y2: y + this._scrollContainer.height,
+        };
+        let windowRectRaw = activeWin.get_frame_rect();
+        let windowRect = {
+            x1: windowRectRaw.x,
+            y1: windowRectRaw.y,
+            x2: windowRectRaw.x + windowRectRaw.width,
+            y2: windowRectRaw.y + windowRectRaw.height,
+        };
+
+        return !(
+            containerRect.x2 < windowRect.x1 ||
+            containerRect.x1 > windowRect.x2 ||
+            containerRect.y2 < windowRect.y1 ||
+            containerRect.y1 > windowRect.y2
+        );
+
+    }
+
+//---------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------disconnect/disable----------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------
+
+    _disconnectAutohideSignals(){
+        if (this._autohide_leaveSignal) {
+            this._scrollContainer.disconnect(this._autohide_leaveSignal);
+            this._autohide_leaveSignal = null;
+        }
+        if (this._autohide_showSignal) {
+            this._autohide_detect_container.disconnect(this._autohide_showSignal);
+            this._autohide_showSignal = null;
+        }
+    }
+
+    _disconnectWindowDragAndRezizeSignals(){
+        const win = this._oldFocusWindow;
+        if (win) {
+            if (this._resizeSignal) {
+                //console.log('resizesignal: '+this._resizeSignal);
+                win.disconnect(this._resizeSignal);
+                this._resizeSignal = null;
+            }
+            if (this._positionSignal) {
+                //console.log('positionsignal: '+this._positionSignal);
+                win.disconnect(this._positionSignal);
+                this._positionSignal = null;
+            }
+        }
+        this._oldFocusWindow=null;
     }
 
     disable() {
 
-        if (this.workspaceSig) {
-            global.workspace_manager.disconnect(this.workspaceSig);
-            this.workspaceSig = 0;
+        this._disconnectAutohideSignals();
+        this._disconnectWindowDragAndRezizeSignals();
+
+        if (this._workspaceSig) {
+            global.workspace_manager.disconnect(this._workspaceSig);
+            this._workspaceSig = 0;
         }
-        this.windowWorkspaces.clear();
+        this._windowWorkspaces.clear();
         
-        if (this.sessionSig) {
-            Main.sessionMode.disconnect(this.sessionSig);
-            this.sessionSig = null;
+        if (this._sessionSig) {
+            Main.sessionMode.disconnect(this._sessionSig);
+            this._sessionSig = null;
         }
-        if (this.displaySig) {
-            global.display.disconnect(this.displaySig);
-            this.displaySig = 0;
+        if (this._displaySig) {
+            global.display.disconnect(this._displaySig);
+            this._displaySig = 0;
         }
 
-        for (const [win, ids] of this.windowSignals) {
+        for (const [win, ids] of this._windowSignals) {
             win.disconnect(ids.minimized);
             win.disconnect(ids.unmanaged);
         }
-        this.windowSignals.clear();
+        this._windowSignals.clear();
 
-        for (const btn of this.windowButtons.values()) {
+        for (const btn of this._windowButtons.values()) {
             this._container.remove_child(btn);
         }
-        this.windowButtons.clear();
+        this._windowButtons.clear();
 
         if (this._container) {
             this._container.destroy();

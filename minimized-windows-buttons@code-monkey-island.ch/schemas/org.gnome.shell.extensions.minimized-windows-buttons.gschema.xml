@@ -13,6 +13,10 @@
     <key name="cover-behaviour" type="s">
       <default>'front'</default>
     </key>
+    <key name="autohide-container-size" type="i">
+      <default>3</default>
+      <range min="0" max="50"/>
+    </key>
     <key name="margin-vertical" type="i">
       <default>3</default>
       <range min="0" max="50"/>
