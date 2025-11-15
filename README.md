@@ -2,19 +2,19 @@
 
 <p>
 A GNOME Shell extension that displays buttons along the screen edge for all minimized windows. Click on them to reopen the window.<br>
-Includes a gnome-extension-settings-page, that lets you customise it.
+Includes a gnome-extensions-settings-page, that lets you customise it.
 </p>
 
 <h3>Features & Settings</h3>
 <ul>
     <li><b>Position</b>: top, bottom, left or right edge of the screen</li>
     <li><b>Show in Overview</b>: optionally show the buttons inside the Activities Overview</li>
-    <li><b>Per-workspace Buttons</b>: show only windows from the current workspace or all workspaces</li>
+    <li><b>Per-workspace Buttons</b>: show only windows from the current workspace or all workspaces. Windows always open in the current workspace</li>
     <li><b>Cover Behaviour</b>:
         <ul>
             <li><b>front</b>: buttons stay on top of windows</li>
-            <li><b>leave space</b>: adjusts the workarea so maximized windows avoid covering the buttons</li>
-            <li><b>autohide</b>: buttons hide when the active window overlaps them; move the cursor to the screen edge to reveal</li>
+            <li><b>leave space</b>: adjusts the workarea so maximized windows avoid covering the buttons. Else behaves like front.</li>
+            <li><b>autohide</b>: buttons hide when the active window overlaps them; move the cursor to the screen edge to reveal when covered. </li>
             <li><b>autohide always</b>: buttons hide whenever the cursor leaves the button-container; reveal by setting the cursor to the screen edge</li>
         </ul>
     </li>
@@ -28,7 +28,7 @@ Includes a gnome-extension-settings-page, that lets you customise it.
         <ul>
             <li>Autohide does not trigger correctly because leave events are not detected.</li>
             <li>Scrolling with touch on the button container does not work.</li>
-            <li>apart from that actually working pretty well. depending on your settings and setup, it might work.</li>
+            <li>apart from that actually working pretty well. depending on your settings and setup, it might work for you.</li>
         </ul>
     </li>
 </ul>
