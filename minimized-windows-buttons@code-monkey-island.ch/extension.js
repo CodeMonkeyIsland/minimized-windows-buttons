@@ -25,15 +25,16 @@ export default class MinimizedButtonsExtension extends Extension {
     _workspaceSig=0;
     _focusSignal=0;
     _scrollOverwriteSig=0;
-    _resizeSignal =0; //window resize, not monitor!
+    _resizeSignal=0; //window resize, not monitor!
     _positionSignal=0;
     _autohide_showSignal=0;
     _autohide_leaveSignal=0;
     _monitorResizeSignal=0;
 
-    _windowSignals=new Map();
-    _windowButtons=new Map();
-    _windowWorkspaces=new Map(); //{window, workspaceIndex}
+    //mapped
+    _windowSignals=null
+    _windowButtons=null;
+    _windowWorkspaces=null; //{window, workspaceIndex}
 
     //for bindings that may get triggered a lot, save some settings as booleans
     _useScrollPiping=false;
@@ -47,6 +48,10 @@ export default class MinimizedButtonsExtension extends Extension {
     //after turning on and off, need to go to overview in order for it to work.
     //after re-login all works fine
     enable() {
+
+        this._windowSignals=new Map();
+        this._windowButtons=new Map();
+        this._windowWorkspaces=new Map();
 
         this.settings=this.getSettings();
 
@@ -71,7 +76,7 @@ export default class MinimizedButtonsExtension extends Extension {
 
         //what covers what
         this._autohide_detect_container = new St.BoxLayout({
-            reactive: true, //to get hover events
+            reactive: true, //to get hover events, blocks input
             x_expand: false,
             y_expand: false,
         });
@@ -89,6 +94,7 @@ export default class MinimizedButtonsExtension extends Extension {
         });
         //decide what to do inside the function, calling it at any cover-behaviour
         this._focusSignal = global.display.connect('notify::focus-window', () => this._focusWindowChange() );
+
         this.settings.connect('changed::autohide-container-size', () => {
             this._setAutohideDefaultSize();
         });
@@ -127,7 +133,7 @@ export default class MinimizedButtonsExtension extends Extension {
             this._updateVisibilityActiveWindow();
         });
 
-        //position of the buttons (top/bottom)
+        //position of the buttons
         this._setPosition();
         this.settings.connect('changed::position-on-screen', () => {
             this._setPosition();
@@ -150,10 +156,14 @@ export default class MinimizedButtonsExtension extends Extension {
             this._watchWindow(actor.meta_window);
         }
 
-
         this._monitorResizeSignal = Main.layoutManager.connect('monitors-changed', () => {
             this._monitorChanged();
         });
+
+        //this works against the turn off/on problem, just a hack. need to investigate further.
+        //problem on startup, when starting into overview.
+        //Main.overview.show();
+        //Main.overview.hide();
 
     }
 
@@ -324,9 +334,6 @@ export default class MinimizedButtonsExtension extends Extension {
         this._setPosition();
         this._setupAutohideDetector();
         this._setScrollcontainerReactivity();
-
-        //trigger reset and update in autohide
-        //this._focusWindowChange();
     }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -539,10 +546,9 @@ export default class MinimizedButtonsExtension extends Extension {
         
     }
 
-    //this is a hover detect container. show buttons on hover! (wrong name?)
+    //this is a hover detect container. show buttons on hover! (wrong name)
     _setupAutohideDetector(){
 
-        //here?
         this._disconnectAutohideSignals();
 
         if (this._autohideActive){
