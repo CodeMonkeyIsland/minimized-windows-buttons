@@ -83,7 +83,7 @@ export default class MinimizedWindowsButtonsPreferences extends ExtensionPrefere
         //autohide-container size
         const rowAutohideContainer = new Adw.ActionRow({
             title: 'autohide: detect container size',
-            subtitle: 'how close to the edge you have to put the cursor in order to show button when auto-hidden',
+            subtitle: 'how close to the edge you have to put the cursor in order to show button when auto-hidden.',
         });
 
         const adjustmentCover = new Gtk.Adjustment({

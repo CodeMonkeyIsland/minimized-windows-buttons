@@ -45,6 +45,7 @@ export default class MinimizedButtonsExtension extends Extension {
 
 
     //after turning on and off, need to go to overview in order for it to work.
+    //after re-login all works fine
     enable() {
 
         this.settings=this.getSettings();
@@ -253,6 +254,8 @@ export default class MinimizedButtonsExtension extends Extension {
 
         this._setWorkspaceButtonVisibility();
 
+        this._setScrollcontainerReactivity();
+
     }
 
     _removeButton(metaWindow) {
@@ -262,6 +265,7 @@ export default class MinimizedButtonsExtension extends Extension {
             this._windowButtons.delete(metaWindow);
             //btn.destroy();
         }
+        this._setScrollcontainerReactivity();
     }
 
     _getWindowGicon(metaWindow) {
@@ -319,6 +323,7 @@ export default class MinimizedButtonsExtension extends Extension {
     _monitorChanged(){
         this._setPosition();
         this._setupAutohideDetector();
+        this._setScrollcontainerReactivity();
 
         //trigger reset and update in autohide
         //this._focusWindowChange();
@@ -529,6 +534,8 @@ export default class MinimizedButtonsExtension extends Extension {
 
         //trigger reset and update in autohide
         this._updateVisibilityActiveWindow();
+
+        this._setScrollcontainerReactivity();
         
     }
 
@@ -688,6 +695,27 @@ export default class MinimizedButtonsExtension extends Extension {
 
     }
 
+    _setScrollcontainerReactivity(){
+        if (this._autohideActive){
+            this._scrollContainer.reactive=true;
+        }else{ //front and leave-space
+            if (this.settings.get_string('position-on-screen') == 'top' ||
+                this.settings.get_string('position-on-screen') == 'bottom'){
+                if (this._container.width > this._scrollContainer.width){
+                    this._scrollContainer.reactive=true;
+                }else{
+                    this._scrollContainer.reactive=false;
+                }
+            }else{
+                if (this._container.height > this._scrollContainer.height){
+                    this._scrollContainer.reactive=true;
+                }else{
+                    this._scrollContainer.reactive=false;
+                }
+            }
+        }
+    }
+
 //---------------------------------------------------------------------------------------------------------------------
 //-----------------------------------------disconnect/disable----------------------------------------------------------
 //---------------------------------------------------------------------------------------------------------------------
@@ -769,7 +797,7 @@ export default class MinimizedButtonsExtension extends Extension {
 
     _destroyUIElements(){
         Main.layoutManager.removeChrome(this._scrollContainer);
-        
+
         if (this._sizingButton) {
             this._sizingButton.destroy();
             this._sizingButton = null;
