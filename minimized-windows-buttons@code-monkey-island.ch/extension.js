@@ -628,8 +628,7 @@ export default class MinimizedButtonsExtension extends Extension {
         }
     }
 
-    _focusWindowChange(){
-        
+    _focusWindowChange(){ 
         if (this._autohideActive){
             let win = global.display.get_focus_window();
             if (!win) {
