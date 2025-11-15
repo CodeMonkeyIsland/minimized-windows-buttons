@@ -11,35 +11,40 @@ import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 
 export default class MinimizedButtonsExtension extends Extension {
 
+    //some UI elements
     _container=null;
     _scrollContainer=null;
+    _sizingButton=null;
+    _oldFocusWindow=null;
+    _autohide_detect_container=null;
 
-    _scrollOverwriteSig=0;
-    _useScrollPiping=false;
-    _autohideActive=false;
+    //saving the returns of the event bindings, in order to disconnect later/on disable
+    //its an address, type int-ish .. however that works in js... 0 is "falsy" and can be used in if()-statements
     _displaySig=0;
     _sessionSig=0;
     _workspaceSig=0;
-
-    _focusSignal=null;
+    _focusSignal=0;
+    _scrollOverwriteSig=0;
+    _resizeSignal =0; //window resize, not monitor!
+    _positionSignal=0;
+    _autohide_showSignal=0;
+    _autohide_leaveSignal=0;
+    _monitorResizeSignal=0;
 
     _windowSignals=new Map();
     _windowButtons=new Map();
-    _windowWorkspaces=new Map();
+    _windowWorkspaces=new Map(); //{window, workspaceIndex}
 
-    _sizingButton=null;
-
-    _resizeSignal =null;
-    _positionSignal=null;
-
-    _oldFocusWindow=null;
-    _autohide_showSignal=null;
-    _autohide_leaveSignal=null;
-    _autohide_detect_container=null;
+    //for bindings that may get triggered a lot, save some settings as booleans
+    _useScrollPiping=false;
+    _autohideActive=false;
     _autohide_always=false;
+
+    //public?
     settings=null;
 
 
+    //after turning on and off, need to go to overview in order for it to work.
     enable() {
 
         this.settings=this.getSettings();
@@ -77,17 +82,15 @@ export default class MinimizedButtonsExtension extends Extension {
         this._setCoverPosition();
         this.settings.connect('changed::cover-behaviour', () => {
             this._setCoverPosition();
+            this._setupAutohideDetector();
+            //trigger reset and update in autohide
+            this._updateVisibilityActiveWindow();
         });
         //decide what to do inside the function, calling it at any cover-behaviour
         this._focusSignal = global.display.connect('notify::focus-window', () => this._focusWindowChange() );
         this.settings.connect('changed::autohide-container-size', () => {
             this._setAutohideDefaultSize();
         });
-
-        //hide or show on overview?
-        Main.overview.connect('showing', () => this._setOverviewVisibility());
-        Main.overview.connect('hiding', () => this._setOverviewVisibility());
-        this._setOverviewVisibility();
 
 
         //per workspace
@@ -99,36 +102,43 @@ export default class MinimizedButtonsExtension extends Extension {
             this._resetWorkspaceButtonVisibility();
         });
 
+        //hide or show on overview?
+        Main.overview.connect('showing', () => this._setOverviewVisibility());
+        Main.overview.connect('hiding', () => this._setOverviewVisibility());
+        this._setOverviewVisibility();
 
         // Create button for sizing, then hide it
         this._sizingButton = new St.Button({ label: 'Hello', style_class: 'minimized-button' });
         this._container.add_child(this._sizingButton);
         this._sizingButton.hide();
 
-        this._scrollPiper = this._scrollPiping.bind(this);
-
         //margins
         this.settings.connect('changed::margin-vertical', () => {
             this._setPosition();
+            this._updateVisibilityActiveWindow();
         });
         this.settings.connect('changed::margin-horizontal', () => {
             this._setPosition();
+            this._updateVisibilityActiveWindow();
         });
         this.settings.connect('changed::margin-buttons', () => {
             this._setPosition();
+            this._updateVisibilityActiveWindow();
         });
 
         //position of the buttons (top/bottom)
         this._setPosition();
         this.settings.connect('changed::position-on-screen', () => {
             this._setPosition();
+            this._updateVisibilityActiveWindow();
         });
 
-        this._scrollContainer.connect('scroll-event', (actor, event) => {
+        this._scrollOverwriteSig= this._scrollContainer.connect('scroll-event', (actor, event) => {
             if (this._useScrollPiping) {
                 return this._scrollPiping(actor, event);
+            }else{
+                return Clutter.EVENT_PROPAGATE;
             }
-            return Clutter.EVENT_STOP;
         });
 
         //new windows
@@ -138,6 +148,11 @@ export default class MinimizedButtonsExtension extends Extension {
         for (const actor of global.get_window_actors()){
             this._watchWindow(actor.meta_window);
         }
+
+
+        this._monitorResizeSignal = Main.layoutManager.connect('monitors-changed', () => {
+            this._monitorChanged();
+        });
 
     }
 
@@ -245,6 +260,7 @@ export default class MinimizedButtonsExtension extends Extension {
         if (btn) {
             this._container.remove_child(btn);
             this._windowButtons.delete(metaWindow);
+            //btn.destroy();
         }
     }
 
@@ -299,29 +315,39 @@ export default class MinimizedButtonsExtension extends Extension {
         return new Gio.ThemedIcon({ name: 'application-x-executable' });
     }
 
+    //for example orientation change
+    _monitorChanged(){
+        this._setPosition();
+        this._setupAutohideDetector();
+
+        //trigger reset and update in autohide
+        //this._focusWindowChange();
+    }
+
 //---------------------------------------------------------------------------------------------------------------------
 //-----------------------------------------setting: Position and margins-----------------------------------------------
 //---------------------------------------------------------------------------------------------------------------------
     _setPosition(){
         let position = this.settings.get_string('position-on-screen');
-        let monitor=Main.layoutManager.primaryMonitor;
-        let topPanel=Main.panel;
         let verticalMargin=this.settings.get_int('margin-vertical');
         let horizontalMargin=this.settings.get_int('margin-horizontal');
 
-        let xPos=0;
-        let yPos=0;
-
-        let buttonMargin=this.settings.get_int('margin-buttons');//margin-right for position top and bottom, margin-bottom for left and right
+        //margin-right for position top and bottom, margin-bottom for left and right
+        let buttonMargin=this.settings.get_int('margin-buttons');
         let buttonRightMargin=0;
         let buttonBottomMargin=0;
         let scrollContainerHeight=0;
         let scrollContainerWidth=0;
 
+        let monitor=Main.layoutManager.primaryMonitor;
+        let topPanel=Main.panel;
+
+        let xPos=0;
+        let yPos=0;
+
         switch (position){
             case 'top':
                 this._scrollContainer.set_layout_manager(new Clutter.BoxLayout({orientation: Clutter.Orientation.HORIZONTAL}));
-
                 buttonRightMargin=buttonMargin;
                 xPos=0;
                 yPos=0;
@@ -381,14 +407,30 @@ export default class MinimizedButtonsExtension extends Extension {
 
     }
 
-    //this triggers "clutter_event_get_scroll_delta: assertion 'event->scroll.direction == CLUTTER_SCROLL_SMOOTH' failed"
-    //think there is no way around it. (not doing this smooth...)
-    _scrollPiping(actor, event) {
+    //not triggering warnings anymore, but still not working for touch
+    _scrollPiping(actor, event){
+
         const hadj = this._scrollContainer.get_hadjustment();
         if (!hadj)  {return Clutter.EVENT_STOP;}
 
-        const [dx, dy] = event.get_scroll_delta();
-        let newVal = hadj.value + dy * 10;
+        const direction=event.get_scroll_direction();
+        let pipedScroll = 0;
+        if (direction === Clutter.ScrollDirection.SMOOTH) {
+            const [dx, dy] = event.get_scroll_delta();
+            pipedScroll = dy+dx;
+        //mouse wheel, cant get scroll delta
+        } else if (direction === Clutter.ScrollDirection.UP) {
+            pipedScroll = -1;
+        } else if (direction === Clutter.ScrollDirection.DOWN) {
+            pipedScroll = +1;
+        //mouse wheel left/right? is there such a thing?
+        } else if (direction === Clutter.ScrollDirection.LEFT) {
+            pipedScroll = -1;
+        } else if (direction === Clutter.ScrollDirection.RIGHT) {
+            pipedScroll = +1;
+        }
+
+        let newVal = hadj.value + pipedScroll * 10;
         newVal = Math.max(hadj.lower, Math.min(newVal, hadj.upper - hadj.page_size));
 
         hadj.set_value(newVal);
@@ -401,10 +443,10 @@ export default class MinimizedButtonsExtension extends Extension {
 //---------------------------------------------------------------------------------------------------------------------
     _setOverviewVisibility(){
         let showInOverview = this.settings.get_boolean('show-in-overview');
-        if (Main.overview.visible) {
-            this._container.visible = showInOverview;
-        } else {
-            this._container.visible = true;
+        if (Main.overview.visible){
+            this._scrollContainer.visible = showInOverview;
+        }else{
+            this._scrollContainer.visible = true;
         }
     }
 
@@ -441,10 +483,12 @@ export default class MinimizedButtonsExtension extends Extension {
 
     _setCoverPosition(){
 
-        Main.layoutManager.removeChrome(this._scrollContainer);
+        if (this._scrollContainer.get_parent()) {
+            Main.layoutManager.removeChrome(this._scrollContainer);
+        }
 
         if (this.settings.get_string('cover-behaviour') == "front"){
-            this._scrollContainer.reactive = false;
+            this._scrollContainer.reactive = true;//false;
             Main.layoutManager.addChrome(this._scrollContainer,{
                 affectsInputRegion: false,
                 trackFullscreen: true,
@@ -453,7 +497,7 @@ export default class MinimizedButtonsExtension extends Extension {
             this._autohideActive=false;
             this._autohide_always=false;
         }else if(this.settings.get_string('cover-behaviour') == "leave space"){
-            this._scrollContainer.reactive = false;
+            this._scrollContainer.reactive = true;//false;
             Main.layoutManager.addChrome(this._scrollContainer,{
                 affectsInputRegion: false,
                 trackFullscreen: true,
@@ -484,14 +528,19 @@ export default class MinimizedButtonsExtension extends Extension {
         this._scrollContainer.queue_relayout();
 
         //trigger reset and update in autohide
-        this._focusWindowChange();
+        this._updateVisibilityActiveWindow();
         
     }
 
     //this is a hover detect container. show buttons on hover! (wrong name?)
     _setupAutohideDetector(){
+
+        //here?
         this._disconnectAutohideSignals();
+
         if (this._autohideActive){
+
+            this._autohide_detect_container.show();
             
             this._setAutohideDefaultSize();
 
@@ -502,6 +551,8 @@ export default class MinimizedButtonsExtension extends Extension {
             if (this.settings.get_string('cover-behaviour') == "autohide"){
                 this._updateVisibilityActiveWindow();
                 this._autohide_leaveSignal=this._scrollContainer.connect('leave-event', () => {
+                    //need to do this with a timeout because can only connect to visible elements? nah... check again. 
+                    //if not necessary, remove glib import
                     GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
                         if (!this._pointerInside(this._scrollContainer)) {
                             this._updateVisibilityActiveWindow();
@@ -512,6 +563,8 @@ export default class MinimizedButtonsExtension extends Extension {
             }else if (this.settings.get_string('cover-behaviour') == "autohide always"){
                 this._scrollContainer.hide();
                 this._autohide_leaveSignal=this._scrollContainer.connect('leave-event', () => {
+                    //need to do this with a timeout because can only connect to visible elements? nah... check again. 
+                    //if not necessary, remove glib import
                     GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
                         if (!this._pointerInside(this._scrollContainer)) {
                             this._scrollContainer.hide();
@@ -642,11 +695,12 @@ export default class MinimizedButtonsExtension extends Extension {
     _disconnectAutohideSignals(){
         if (this._autohide_leaveSignal) {
             this._scrollContainer.disconnect(this._autohide_leaveSignal);
-            this._autohide_leaveSignal = null;
+            this._autohide_leaveSignal = 0;
         }
         if (this._autohide_showSignal) {
+
             this._autohide_detect_container.disconnect(this._autohide_showSignal);
-            this._autohide_showSignal = null;
+            this._autohide_showSignal = 0;
         }
     }
 
@@ -654,38 +708,54 @@ export default class MinimizedButtonsExtension extends Extension {
         const win = this._oldFocusWindow;
         if (win) {
             if (this._resizeSignal) {
-                //console.log('resizesignal: '+this._resizeSignal);
                 win.disconnect(this._resizeSignal);
-                this._resizeSignal = null;
+                this._resizeSignal = 0;
             }
             if (this._positionSignal) {
-                //console.log('positionsignal: '+this._positionSignal);
                 win.disconnect(this._positionSignal);
-                this._positionSignal = null;
+                this._positionSignal = 0;
             }
         }
-        this._oldFocusWindow=null;
+        this._oldFocusWindow=null; //dont destroy the window!
     }
 
-    disable() {
-
+    _disconnectSingleHooks(){
         this._disconnectAutohideSignals();
         this._disconnectWindowDragAndRezizeSignals();
+
+        if (this._displaySig) {
+            global.display.disconnect(this._displaySig);
+            this._displaySig = 0;
+        }
+
+        if (this._sessionSig) {
+            Main.sessionMode.disconnect(this._sessionSig);
+            this._sessionSig = 0;
+        }
 
         if (this._workspaceSig) {
             global.workspace_manager.disconnect(this._workspaceSig);
             this._workspaceSig = 0;
         }
-        this._windowWorkspaces.clear();
-        
-        if (this._sessionSig) {
-            Main.sessionMode.disconnect(this._sessionSig);
-            this._sessionSig = null;
+
+        if (this._focusSignal) {
+            global.display.disconnect(this._focusSignal);
+            this._focusSignal = 0;
         }
-        if (this._displaySig) {
-            global.display.disconnect(this._displaySig);
-            this._displaySig = 0;
+
+        if (this.__scrollOverwriteSig) {
+            this._scrollContainer.disconnect(this._scrollOverwriteSig);
+            this._scrollOverwriteSig = 0;
         }
+
+        if (this._monitorResizeSignal) {
+            Main.layoutManager.disconnect(this._monitorResizeSignal);
+            this._monitorResizeSignal = 0;
+        }
+
+    }
+
+    _disconnectMappedHooks(){
 
         for (const [win, ids] of this._windowSignals) {
             win.disconnect(ids.minimized);
@@ -693,18 +763,49 @@ export default class MinimizedButtonsExtension extends Extension {
         }
         this._windowSignals.clear();
 
-        for (const btn of this._windowButtons.values()) {
-            this._container.remove_child(btn);
+        //dont need to disconnect anything here, just clear the map
+        this._windowWorkspaces.clear();
+    }
+
+    _destroyUIElements(){
+        Main.layoutManager.removeChrome(this._scrollContainer);
+        
+        if (this._sizingButton) {
+            this._sizingButton.destroy();
+            this._sizingButton = null;
         }
-        this._windowButtons.clear();
 
         if (this._container) {
             this._container.destroy();
             this._container = null;
         }
-        this.settings = null;
-        
 
+        if (this._scrollContainer) {
+            this._scrollContainer.destroy();
+            this._scrollContainer = null;
+        }
+
+        if (this._autohide_detect_container) {
+            this._autohide_detect_container.destroy();
+            this._autohide_detect_container = null;
+        }
+    }
+
+    disable() {
+        this._disconnectSingleHooks();
+
+        this._disconnectMappedHooks();
+
+        for (const btn of this._windowButtons.values()) {
+            this._container.remove_child(btn);
+            btn.destroy();
+        }
+        this._windowButtons.clear();
+
+        this._destroyUIElements();
+        
+        //gets me into trouble when switching extension on/off
+        //this.settings = null;
     }
 
 } //MinimizedButtonsExtension extends Extension
