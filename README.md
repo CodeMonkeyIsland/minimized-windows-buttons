@@ -26,8 +26,8 @@ Includes a gnome-extensions-settings-page, that lets you customise it.
     <li>After reloading the extension (turning it off and on), an Overview toggle is required to make it work again. A new login works as well.</li>
     <li><b>Touch support (experimental)</b>:
         <ul>
-            <li>Autohide does not trigger correctly because leave events are not detected.</li>
-            <li>Scrolling with touch on the button container does not work.</li>
+            <li>Autohide does not trigger correctly because leave events are not detected. Still works fine, when you move or resize the active window.</li>
+            <li>Touch-scroll on the button container does not work.</li>
             <li>apart from that actually working pretty well. depending on your settings and setup, it might work for you.</li>
         </ul>
     </li>
