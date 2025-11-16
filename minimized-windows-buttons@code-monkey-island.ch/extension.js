@@ -3,7 +3,7 @@ import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import Shell from 'gi://Shell';
 
-import GLib from 'gi://GLib';
+//import GLib from 'gi://GLib';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -19,7 +19,7 @@ export default class MinimizedButtonsExtension extends Extension {
     _autohide_detect_container=null;
 
     //saving the returns of the event bindings, in order to disconnect later/on disable
-    //its an address, type int-ish .. however that works in js... 0 is "falsy" and can be used in if()-statements
+    //its an address, type int-ish ... 0 is "falsy" and can be used in if()-statements
     _displaySig=0;
     _sessionSig=0;
     _workspaceSig=0;
@@ -41,12 +41,10 @@ export default class MinimizedButtonsExtension extends Extension {
     _autohideActive=false;
     _autohide_always=false;
 
-    //public?
+
     settings=null;
 
 
-    //after turning on and off, need to go to overview in order for it to work.
-    //after re-login all works fine
     enable() {
 
         this._windowSignals=new Map();
@@ -55,12 +53,8 @@ export default class MinimizedButtonsExtension extends Extension {
 
         this.settings=this.getSettings();
 
-        this._sessionSig = Main.sessionMode.connect('updated', () => {
-            for (const actor of global.get_window_actors()){
-                this._watchWindow(actor.meta_window);
-            }
-        });
-
+        //------------------------------------------UI ELEMENTS------------------------------------------------------------------
+        
         this._container = new St.BoxLayout();
 
         this._scrollContainer = new St.ScrollView({
@@ -73,51 +67,82 @@ export default class MinimizedButtonsExtension extends Extension {
         });
         this._scrollContainer.add_child(this._container);
 
-
-        //what covers what
         this._autohide_detect_container = new St.BoxLayout({
             reactive: true, //to get hover events, blocks input
             x_expand: false,
             y_expand: false,
         });
-        Main.layoutManager.addChrome(this._autohide_detect_container, {
-                affectsInputRegion: false,
-                trackFullscreen: true,
-                affectsStruts: false
-        });
-        this._setCoverPosition();
-        this.settings.connect('changed::cover-behaviour', () => {
-            this._setCoverPosition();
-            this._setupAutohideDetector();
-            //trigger reset and update in autohide
-            this._updateVisibilityActiveWindow();
-        });
-        //decide what to do inside the function, calling it at any cover-behaviour
-        this._focusSignal = global.display.connect('notify::focus-window', () => this._focusWindowChange() );
 
-        this.settings.connect('changed::autohide-container-size', () => {
-            this._setAutohideDefaultSize();
-        });
 
+
+        //------------------------------------------HOOKS THAT DONT DEPENT ON CHROME---------------------------------------------
+        
+        this._sessionSig = Main.sessionMode.connect('updated', () => {
+            for (const actor of global.get_window_actors()){
+                this._watchWindow(actor.meta_window);
+            }
+        });
 
         //per workspace
         this._workspaceSig = global.workspace_manager.connect(
             'active-workspace-changed',
             () => this._setWorkspaceButtonVisibility()
         );
-        this.settings.connect('changed::per-workspace-buttons', () => {
-            this._resetWorkspaceButtonVisibility();
+
+        //decide what to do inside the function, calling it at any cover-behaviour
+        this._focusSignal = global.display.connect('notify::focus-window', () => this._focusWindowChange() );
+
+        this._monitorResizeSignal = Main.layoutManager.connect('monitors-changed', () => {
+            this._monitorChanged();
         });
 
-        //hide or show on overview?
-        Main.overview.connect('showing', () => this._setOverviewVisibility());
-        Main.overview.connect('hiding', () => this._setOverviewVisibility());
-        this._setOverviewVisibility();
+        //SCROLL:pos top and bottom:pipe vertical scroll to horizontal
+        this._scrollOverwriteSig= this._scrollContainer.connect('scroll-event', (actor, event) => {
+            if (this._useScrollPiping) {
+                return this._scrollPiping(actor, event);
+            }else{
+                return Clutter.EVENT_PROPAGATE;
+            }
+        });
+
+        //------------------------------------------WINDOW WATCHERS---------------------------------------------
+
+        //new windows
+        this._displaySig = global.display.connect('window-created', (_d, metaWindow) => this._watchWindow(metaWindow));
+
+        //existing windows
+        for (const actor of global.get_window_actors()){
+            this._watchWindow(actor.meta_window);
+        }
+
+
+        //-----------------------------------------SET POSITION, COVER-----------------------------------------------
+
+        this._setCoverPosition();
 
         // Create button for sizing, then hide it
         this._sizingButton = new St.Button({ label: 'Hello', style_class: 'minimized-button' });
         this._container.add_child(this._sizingButton);
         this._sizingButton.hide();
+        
+        this._setPosition();
+
+        //if turn on/off, gnome window is not detected as focuswindow, autohide reacts only when a new window is focused
+        //this._focusWindowChange();
+
+        //------------------------------------------SETTINGS CONNECT-------------------------------------------------
+
+        this.settings.connect('changed::cover-behaviour', () => {
+            this._setCoverPosition();
+            this._setupAutohideDetector();
+            //trigger reset and update in autohide
+            this._updateVisibilityActiveWindow();
+
+        });
+        
+        this.settings.connect('changed::autohide-container-size', () => {
+            this._setAutohideDefaultSize();
+        });
 
         //margins
         this.settings.connect('changed::margin-vertical', () => {
@@ -134,37 +159,22 @@ export default class MinimizedButtonsExtension extends Extension {
         });
 
         //position of the buttons
-        this._setPosition();
         this.settings.connect('changed::position-on-screen', () => {
             this._setPosition();
             this._updateVisibilityActiveWindow();
         });
 
-        this._scrollOverwriteSig= this._scrollContainer.connect('scroll-event', (actor, event) => {
-            if (this._useScrollPiping) {
-                return this._scrollPiping(actor, event);
-            }else{
-                return Clutter.EVENT_PROPAGATE;
-            }
+        //per workspace buttons
+        this.settings.connect('changed::per-workspace-buttons', () => {
+            this._setWorkspaceButtonVisibility();
         });
 
-        //new windows
-        this._displaySig = global.display.connect('window-created', (_d, metaWindow) => this._watchWindow(metaWindow));
+        //------------------------------------------OVERVIEW---------------------------------------------------
 
-        //existing windows
-        for (const actor of global.get_window_actors()){
-            this._watchWindow(actor.meta_window);
-        }
-
-        this._monitorResizeSignal = Main.layoutManager.connect('monitors-changed', () => {
-            this._monitorChanged();
-        });
-
-        //this works against the turn off/on problem, just a hack. need to investigate further.
-        //problem on startup, when starting into overview.
-        //Main.overview.show();
-        //Main.overview.hide();
-
+        Main.overview.connect('showing', () => this._setOverviewVisibility());
+        Main.overview.connect('hiding', () => this._setOverviewVisibility());
+        this._setOverviewVisibility();
+     
     }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -176,12 +186,14 @@ export default class MinimizedButtonsExtension extends Extension {
             return;
         }
 
+        this._windowWorkspaces.set(
+            metaWindow,
+            metaWindow.get_workspace().index()
+        );
+
         const minimizedId = metaWindow.connect('notify::minimized', () => {
             if (metaWindow.minimized) {
-                this._windowWorkspaces.set(
-                    metaWindow,
-                    metaWindow.get_workspace().index()
-                );
+
                 this._ensureButton(metaWindow);
             } else {
                 this._windowWorkspaces.delete(metaWindow);
@@ -208,6 +220,7 @@ export default class MinimizedButtonsExtension extends Extension {
         metaWindow.disconnect(ids.minimized);
         metaWindow.disconnect(ids.unmanaged);
         this._windowSignals.delete(metaWindow);
+        this._windowWorkspaces.delete(metaWindow);
     }
 
     _ensureButton(metaWindow) {
@@ -273,7 +286,7 @@ export default class MinimizedButtonsExtension extends Extension {
         if (btn) {
             this._container.remove_child(btn);
             this._windowButtons.delete(metaWindow);
-            //btn.destroy();
+            btn.destroy();
         }
         this._setScrollcontainerReactivity();
     }
@@ -465,12 +478,6 @@ export default class MinimizedButtonsExtension extends Extension {
 //---------------------------------------------------------------------------------------------------------------------
 //-----------------------------------------setting: per workspace------------------------------------------------------
 //---------------------------------------------------------------------------------------------------------------------
-    _resetWorkspaceButtonVisibility(){
-        for (let [metaWindow, btn] of this._windowButtons) {
-             btn.visible=true;
-        }
-        this._setWorkspaceButtonVisibility();
-    }
 
     _setWorkspaceButtonVisibility(){
         if (this.settings.get_boolean('per-workspace-buttons')){
@@ -484,7 +491,9 @@ export default class MinimizedButtonsExtension extends Extension {
                 }
             }
         }else{
-            //do nothing
+            for (let [metaWindow, btn] of this._windowButtons) {
+                btn.visible=true;
+            }
         }
     }
 
@@ -536,8 +545,11 @@ export default class MinimizedButtonsExtension extends Extension {
             this._autohideActive=true;
             this._autohide_always=true;
         }
-        this._setupAutohideDetector();
+
+        this._scrollContainer.show();
         this._scrollContainer.queue_relayout();
+
+        this._setupAutohideDetector();
 
         //trigger reset and update in autohide
         this._updateVisibilityActiveWindow();
@@ -551,11 +563,20 @@ export default class MinimizedButtonsExtension extends Extension {
 
         this._disconnectAutohideSignals();
 
+        if (this._autohide_detect_container.get_parent()) {
+            Main.layoutManager.removeChrome(this._autohide_detect_container);
+        }
+        Main.layoutManager.addChrome(this._autohide_detect_container, {
+                affectsInputRegion: false,
+                trackFullscreen: true,
+                affectsStruts: false
+        });
+
         if (this._autohideActive){
 
-            this._autohide_detect_container.show();
-            
             this._setAutohideDefaultSize();
+            this._autohide_detect_container.show();
+            this._autohide_detect_container.queue_relayout();
 
             this._autohide_showSignal=this._autohide_detect_container.connect('enter-event', () => {
                 this._scrollContainer.show();
@@ -564,26 +585,16 @@ export default class MinimizedButtonsExtension extends Extension {
             if (this.settings.get_string('cover-behaviour') == "autohide"){
                 this._updateVisibilityActiveWindow();
                 this._autohide_leaveSignal=this._scrollContainer.connect('leave-event', () => {
-                    //need to do this with a timeout because can only connect to visible elements? nah... check again. 
-                    //if not necessary, remove glib import
-                    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
                         if (!this._pointerInside(this._scrollContainer)) {
                             this._updateVisibilityActiveWindow();
                         }
-                        return GLib.SOURCE_REMOVE;
-                    });
                 });
             }else if (this.settings.get_string('cover-behaviour') == "autohide always"){
                 this._scrollContainer.hide();
                 this._autohide_leaveSignal=this._scrollContainer.connect('leave-event', () => {
-                    //need to do this with a timeout because can only connect to visible elements? nah... check again. 
-                    //if not necessary, remove glib import
-                    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
                         if (!this._pointerInside(this._scrollContainer)) {
                             this._scrollContainer.hide();
                         }
-                        return GLib.SOURCE_REMOVE;
-                    });
                 });
             }
 
@@ -602,6 +613,7 @@ export default class MinimizedButtonsExtension extends Extension {
                 y <= box.y2;
     }
 
+    //setup!
     _setAutohideDefaultSize(){
         let containerSize=this.settings.get_int('autohide-container-size');//5;
         switch (this.settings.get_string('position-on-screen')){
@@ -776,7 +788,7 @@ export default class MinimizedButtonsExtension extends Extension {
             this._focusSignal = 0;
         }
 
-        if (this.__scrollOverwriteSig) {
+        if (this._scrollOverwriteSig) {
             this._scrollContainer.disconnect(this._scrollOverwriteSig);
             this._scrollOverwriteSig = 0;
         }
@@ -802,6 +814,7 @@ export default class MinimizedButtonsExtension extends Extension {
 
     _destroyUIElements(){
         Main.layoutManager.removeChrome(this._scrollContainer);
+        Main.layoutManager.removeChrome(this._autohide_detect_container);
 
         if (this._sizingButton) {
             this._sizingButton.destroy();

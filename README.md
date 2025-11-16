@@ -1,7 +1,7 @@
 <h2><b>Minimized Windows Buttons</b></h2>
 
 <p>
-A GNOME Shell extension that displays buttons along the screen edge for all minimized windows. Click on them to reopen the window.<br>
+A GNOME Shell extension that displays buttons along the screen edge for minimized windows. Click on them to reopen the window.<br>
 Includes a gnome-extensions-settings-page, that lets you customise it.
 </p>
 
@@ -18,15 +18,15 @@ Includes a gnome-extensions-settings-page, that lets you customise it.
             <li><b>autohide always</b>: buttons hide whenever the cursor leaves the button-container; reveal by setting the cursor to the screen edge</li>
         </ul>
     </li>
-    <li><b>Margins</b>: spacing between buttons and between the container and the screen edge</li>
+    <li><b>Margins</b>: spacing between buttons and between the container and the screen edges</li>
 </ul>
 
 <h3>Known Issues</h3>
 <ul>
-    <li>After reloading the extension (turning it off and on), an Overview toggle is required to make it work again. A new login works as well.</li>
+    <li>After reloading the extension (turning it off and on), the focused window at the that time isn't detected. Autohide works only after you change focus to another window.</li>
     <li><b>Touch support (experimental)</b>:
         <ul>
-            <li>Autohide does not trigger correctly because leave events are not detected. Still works fine, when you move or resize the active window.</li>
+            <li>Autohide does not trigger correctly because leave events are not detected. Still works fine, when you move or resize the active window. auto-show (move cursor to the edge) works ok here on debian 13 gnome 48. adjust the size of the detection zone on settings. For nicely calibrated touch, size 1 works for me.</li>
             <li>Touch-scroll on the button container does not work.</li>
             <li>apart from that actually working pretty well. depending on your settings and setup, it might work for you.</li>
         </ul>
