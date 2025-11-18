@@ -108,14 +108,12 @@ export class CoreLogic{
             return;
         }
 
-        this._windowWorkspaces.set(
-            metaWindow,
-            metaWindow.get_workspace().index()
-        );
-
         const minimizedId = metaWindow.connect('notify::minimized', () => {
             if (metaWindow.minimized) {
-
+                this._windowWorkspaces.set(
+                    metaWindow,
+                    metaWindow.get_workspace().index()
+                );
                 this.#ensureButton(metaWindow);
             } else {
                 this._windowWorkspaces.delete(metaWindow);
@@ -132,6 +130,10 @@ export class CoreLogic{
 
         //initial check
         if (metaWindow.minimized) {
+            this._windowWorkspaces.set(
+                    metaWindow,
+                    metaWindow.get_workspace().index()
+            );
             this.#ensureButton(metaWindow);
         }
     }
@@ -187,13 +189,9 @@ export class CoreLogic{
             this.#removeButton(metaWindow);
         });
 
-        //DISPLAY MANAGER
         this.#displayManager.styleButton(btn);
-
         this._windowButtons.set(metaWindow, btn);
 
-
-        //DISPLAY MANAGER
         this.#displayManager.setWorkspaceButtonVisibility();
         this.#displayManager.setScrollcontainerReactivity();
 
@@ -207,7 +205,6 @@ export class CoreLogic{
             btn.destroy();
         }
 
-        //DISPLAY MANAGER
         this.#displayManager.setScrollcontainerReactivity();
     }
 
