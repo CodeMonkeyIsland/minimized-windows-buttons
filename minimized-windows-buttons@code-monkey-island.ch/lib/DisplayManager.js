@@ -10,27 +10,27 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 export class DisplayManager{
 
-	#coreLogic=null;
-	#settingsConnector=null;
+    #coreLogic=null;
+    #settingsConnector=null;
 
-	#workspaceSignal=0;
-	#focusSignal=0;
-	#scrollOverwriteSignal=0;
-	#monitorResizeSignal=0;
-	#autohide_showSignal=0;
+    #workspaceSignal=0;
+    #focusSignal=0;
+    #scrollOverwriteSignal=0;
+    #monitorResizeSignal=0;
+    #autohide_showSignal=0;
     #autohide_leaveSignal=0;
- 	#overviewShowSignal=0;
+    #overviewShowSignal=0;
     #overviewHideSignal=0;
     #resizeSignal=0; //window resize, not monitor!
     #positionSignal=0;
 
-	#scrollContainer=null;
-	#autohide_detect_container=null;
-	#sizingButton=null;
-	#oldFocusWindow=null;
+    #scrollContainer=null;
+    #autohide_detect_container=null;
+    #sizingButton=null;
+    #oldFocusWindow=null;
 
-	#useScrollPiping=false;
-	#autohideActive=false;
+    #useScrollPiping=false;
+    #autohideActive=false;
     #autohide_always=false;
 
 	constructor(_coreLogic, _settingsConnector){
@@ -40,7 +40,7 @@ export class DisplayManager{
 
 	init(){
 
-		this.#scrollContainer = new St.ScrollView({
+        this.#scrollContainer = new St.ScrollView({
             overlay_scrollbars: false,
             enable_mouse_scrolling: true,
             x_expand: true,
@@ -95,10 +95,10 @@ export class DisplayManager{
 
 	close(){
 
-		this.#disconnectAutohideSignals();
+        this.#disconnectAutohideSignals();
         this.#disconnectWindowDragAndRezizeSignals();
 
-		if (this.#workspaceSignal) {
+        if (this.#workspaceSignal) {
             global.workspace_manager.disconnect(this.#workspaceSignal);
             this.#workspaceSignal = 0;
         }

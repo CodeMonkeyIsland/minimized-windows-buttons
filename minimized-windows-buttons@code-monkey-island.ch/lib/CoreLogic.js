@@ -19,11 +19,11 @@ export class CoreLogic{
 	 * Placement, show/hide is done with scrollContainer, but
 	 * DisplayManager manipulates vertical/horizontal button stacking in this container
 	 */
-	container=null;
+    container=null;
 
-	#windowSignals=null
+    #windowSignals=null
 
-	//need those in DisplayManager.setWorkspaceButtonVisibility
+    //need those in DisplayManager.setWorkspaceButtonVisibility
     _windowButtons=null;
     _windowWorkspaces=null; //{window, workspaceIndex}
 
@@ -49,7 +49,7 @@ export class CoreLogic{
 
         this.#displayManager.init();
 
-		this.#sessionSignal = Main.sessionMode.connect('updated', () => {
+        this.#sessionSignal = Main.sessionMode.connect('updated', () => {
             for (const actor of global.get_window_actors()){
                 this.#watchWindow(actor.meta_window);
             }
@@ -206,6 +206,9 @@ export class CoreLogic{
         }
 
         this.#displayManager.setScrollcontainerReactivity();
+
+        //without this, the container leaves a gap in the buttons place
+        this.container.queue_relayout();
     }
 
     #getWindowGicon(metaWindow) {

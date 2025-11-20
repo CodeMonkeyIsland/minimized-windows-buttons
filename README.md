@@ -1,20 +1,20 @@
 <h2><b>Minimized Windows Buttons</b></h2>
 
 <p>
-A GNOME Shell extension that displays buttons along the screen edge for minimized windows. Click on them to reopen the window.<br>
-Includes a gnome-extensions-settings-page, that lets you customise it.
+A GNOME Shell extension that displays buttons along the screen edge for each minimized window. Click on them to reopen the window.<br>
+Includes a settings-page, that lets you customise it.
 </p>
 
 <h3>Features & Settings</h3>
 <ul>
     <li><b>Position</b>: top, bottom, left or right edge of the screen</li>
     <li><b>Show in Overview</b>: optionally show the buttons inside the Activities Overview</li>
-    <li><b>Per-workspace Buttons</b>: show only windows from the current workspace or all workspaces. Windows always open in the current workspace</li>
+    <li><b>Per-workspace Buttons</b>: show only windows from the current workspace or all workspaces.</li>
     <li><b>Cover Behaviour</b>:
         <ul>
-            <li><b>front</b>: buttons stay on top of windows</li>
+            <li><b>front</b>: buttons stay in front of windows</li>
             <li><b>leave space</b>: adjusts the workarea so maximized windows avoid covering the buttons. Else behaves like front.</li>
-            <li><b>autohide</b>: buttons hide when the active window overlaps them; move the cursor to the screen edge to reveal when covered. </li>
+            <li><b>autohide</b>: buttons hide when the focussed window overlaps them; move the cursor to the screen edge to reveal when covered. </li>
             <li><b>autohide always</b>: buttons hide whenever the cursor leaves the button-container; reveal by setting the cursor to the screen edge</li>
         </ul>
     </li>

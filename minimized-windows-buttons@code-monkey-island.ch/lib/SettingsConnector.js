@@ -5,9 +5,9 @@
 
 export class SettingsConnector{
 
-	settings=null;
+    settings=null;
 
-	#displayManager=null;
+    #displayManager=null;
 
     #coverSignal=0;
     #autohideSizeSignal=0;

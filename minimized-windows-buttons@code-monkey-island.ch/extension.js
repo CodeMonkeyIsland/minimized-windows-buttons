@@ -22,7 +22,7 @@ export default class MinimizedButtonsExtension extends Extension {
         this.#settingsConnector.setDisplayManager(this.#displayManager);
 
         this.#settingsConnector.connect();
-        this.#coreLogic.init(); //initialises also displayManager
+        this.#coreLogic.init(); //initialises displayManager during init
         
     }
 
