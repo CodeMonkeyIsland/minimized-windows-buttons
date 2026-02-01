@@ -162,33 +162,33 @@ export class DisplayManager{
                 this.#scrollContainer.set_layout_manager(new Clutter.BoxLayout({orientation: Clutter.Orientation.HORIZONTAL}));
                 buttonRightMargin=buttonMargin;
                 xPos=0;
-                yPos=0;
-                scrollContainerHeight=this.#sizingButton.height+verticalMargin*2+topPanel.height;
+                yPos=topPanel.height+verticalMargin;
+                scrollContainerHeight=this.#sizingButton.height;
                 scrollContainerWidth=monitor.width;
                 this.#coreLogic.container.set_layout_manager(new Clutter.BoxLayout({ orientation: Clutter.Orientation.HORIZONTAL}));
-                this.#scrollContainer.set_style('padding: '+(verticalMargin+topPanel.height)+'px '+horizontalMargin+'px '+verticalMargin+'px '+horizontalMargin+'px;');
+                this.#scrollContainer.set_style('padding: 0px '+horizontalMargin+'px 0px '+horizontalMargin+'px;');
                 this.#useScrollPiping=true;
                 break;
             case 'bottom':
                 this.#scrollContainer.set_layout_manager(new Clutter.BoxLayout({orientation: Clutter.Orientation.HORIZONTAL}));
                 buttonRightMargin=buttonMargin;
                 xPos=0;
-                yPos=monitor.height - this.#sizingButton.height - verticalMargin*2;
-                scrollContainerHeight=this.#sizingButton.height + verticalMargin*2;
+                yPos=monitor.height - this.#sizingButton.height - verticalMargin;
+                scrollContainerHeight=this.#sizingButton.height;
                 scrollContainerWidth=monitor.width;
                 this.#coreLogic.container.set_layout_manager(new Clutter.BoxLayout({ orientation: Clutter.Orientation.HORIZONTAL}));
-                this.#scrollContainer.set_style('padding: '+verticalMargin+'px '+horizontalMargin+'px '+verticalMargin+'px '+horizontalMargin+'px;');
+                this.#scrollContainer.set_style('padding: 0px '+horizontalMargin+'px 0px '+horizontalMargin+'px;');
                 this.#useScrollPiping=true;
                 break;
             case 'left':
                 this.#scrollContainer.set_layout_manager(new Clutter.BoxLayout({orientation: Clutter.Orientation.VERTICAL}));
                 buttonBottomMargin=buttonMargin;
-                xPos=0;
+                xPos=horizontalMargin;
                 yPos=topPanel.height;
                 scrollContainerHeight=monitor.height-topPanel.height;
-                scrollContainerWidth=this.#sizingButton.width+horizontalMargin*2;
+                scrollContainerWidth=this.#sizingButton.width;
                 this.#coreLogic.container.set_layout_manager(new Clutter.BoxLayout({ orientation: Clutter.Orientation.VERTICAL}));
-                this.#scrollContainer.set_style('padding: '+verticalMargin+'px '+horizontalMargin+'px '+verticalMargin+'px '+horizontalMargin+'px;');
+                this.#scrollContainer.set_style('padding: '+verticalMargin+'px 0px '+verticalMargin+'px 0px;');
                 this.#useScrollPiping=false;
                 break;
             case 'right':
@@ -197,9 +197,9 @@ export class DisplayManager{
                 xPos=monitor.width-this.#sizingButton.width-horizontalMargin*2;
                 yPos=topPanel.height;
                 scrollContainerHeight=monitor.height-topPanel.height;
-                scrollContainerWidth=this.#sizingButton.width+horizontalMargin*2;
+                scrollContainerWidth=this.#sizingButton.width;
                 this.#coreLogic.container.set_layout_manager(new Clutter.BoxLayout({ orientation: Clutter.Orientation.VERTICAL}));
-                this.#scrollContainer.set_style('padding: '+verticalMargin+'px '+horizontalMargin+'px '+verticalMargin+'px '+horizontalMargin+'px;');
+                this.#scrollContainer.set_style('padding: '+verticalMargin+'px 0px '+verticalMargin+'px 0px;');
                 this.#useScrollPiping=false;
                 break;
         }

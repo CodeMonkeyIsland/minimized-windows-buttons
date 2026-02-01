@@ -156,7 +156,7 @@ export default class MinimizedWindowsButtonsPreferences extends ExtensionPrefere
 
         const adjustment1 = new Gtk.Adjustment({
             lower: 0,
-            upper: 50,
+            upper: 100,
             step_increment: 1,
             page_increment: 1,
             value: this.getSettings().get_int('margin-vertical')
@@ -193,12 +193,12 @@ export default class MinimizedWindowsButtonsPreferences extends ExtensionPrefere
         //horizontal margins
         const row2 = new Adw.ActionRow({
             title: 'Button container: horizontal margin',
-            subtitle: 'Horizontal spacing, for now margin-left',
+            subtitle: 'Horizontal spacing',
         });
 
         const adjustment2 = new Gtk.Adjustment({
             lower: 0,
-            upper: 50,
+            upper: 100,
             step_increment: 1,
             page_increment: 1,
             value: this.getSettings().get_int('margin-horizontal'),

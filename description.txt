@@ -1,0 +1,10 @@
+Shows a button on the edge of the screen for each minimized window. Click to maximize again.
+
+Includes a settings page that lets you customize it:
+- Position: top, bottom, left and right
+- Show in Overview (or not)
+- Per Workspace Buttons (or always show all buttons)
+- Cover behaviour: front, leave space, autohide, autohide always.
+- Margins
+
+Touch support is considered experimental at this point. Scroll and autohide not working properly on touch input.
