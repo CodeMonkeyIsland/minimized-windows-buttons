@@ -11,6 +11,8 @@ import Shell from 'gi://Shell';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+const Mtk = imports.gi.Mtk;
+
 
 export class CoreLogic{
 	
@@ -183,6 +185,20 @@ export class CoreLogic{
         btn.connect('clicked', () => {
             let currentWorkspace = global.workspace_manager.get_active_workspace();
             metaWindow.change_workspace(currentWorkspace);
+
+            let [x, y] = btn.get_transformed_position();
+            let [w, h] = btn.get_transformed_size();
+
+            let rect = new Mtk.Rectangle({
+                x: Math.floor(x),
+                y: Math.floor(y),
+                width: Math.floor(w),
+                height: Math.floor(h),
+            });
+
+            metaWindow.set_icon_geometry(rect);
+
+
             try { metaWindow.unminimize(); } catch(e) { console.error(e); }
             try { metaWindow.activate(global.get_current_time());} catch(e) { console.error(e); }
 
