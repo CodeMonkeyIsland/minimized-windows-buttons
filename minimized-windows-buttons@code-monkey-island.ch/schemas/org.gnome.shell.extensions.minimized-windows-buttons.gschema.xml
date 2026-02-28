@@ -1,39 +1,61 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
   <schema id="org.gnome.shell.extensions.minimized-windows-buttons" path="/org/gnome/shell/extensions/minimized-windows-buttons/">
+
     <key name="show-in-overview" type="b">
       <default>false</default>
     </key>
+
     <key name="per-workspace-buttons" type="b">
       <default>false</default>
     </key>
+
     <key name="position-on-screen" type="s">
       <default>'bottom'</default>
     </key>
+
     <key name="cover-behaviour" type="s">
       <default>'front'</default>
     </key>
+
     <key name="autohide-container-size" type="i">
       <default>3</default>
       <range min="0" max="50"/>
     </key>
+
     <key name="margin-vertical" type="i">
       <default>3</default>
       <range min="0" max="100"/>
       <summary>Button container: vertical margin</summary>
       <description>Vertical spacing, margin top for position top/margin bottom for position bottom</description>
     </key>
+
     <key name="margin-horizontal" type="i">
       <default>3</default>
       <range min="0" max="100"/>
       <summary>Button container: horizontal margin</summary>
-      <description>Horizontal spacing, for now margin-left</description>
+      <description>Horizontal spacing</description>
     </key>
+
     <key name="margin-buttons" type="i">
       <default>1</default>
       <range min="0" max="20"/>
       <summary>button margins</summary>
       <description>space between buttons</description>
     </key>
+
+    <key name="button-height" type="i">
+      <default>36</default>
+      <range min="5" max="100"/>
+      <summary>button height</summary>
+    </key>
+
+    <key name="button-width" type="i">
+      <default>150</default>
+      <range min="20" max="500"/>
+      <summary>button width</summary>
+    </key>
+
+    
   </schema>
 </schemalist>

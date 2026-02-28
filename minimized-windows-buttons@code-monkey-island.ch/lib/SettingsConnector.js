@@ -18,6 +18,9 @@ export class SettingsConnector{
     #positionSignal=0;
     #perWorkspaceSignal=0;
 
+    #buttonHeightSignal=0;
+    #buttonWidthSignal=0;
+
 
 	constructor(_settings){
 		this.settings=_settings;
@@ -68,6 +71,19 @@ export class SettingsConnector{
             this.#displayManager.setWorkspaceButtonVisibility();
         });
 
+        this.#buttonHeightSignal=this.settings.connect('changed::button-height', () => {
+            this.#buttonFactory.init();
+            this.#displayManager.setPosition();
+            this.#displayManager.setScrollcontainerReactivity();
+        });
+
+        this.#buttonWidthSignal=this.settings.connect('changed::button-width', () => {
+            this.#buttonFactory.init();
+            this.#displayManager.setPosition();
+            this.#displayManager.setScrollcontainerReactivity();
+        });
+
+
 	}
 
 	disconnect(){
@@ -99,6 +115,16 @@ export class SettingsConnector{
         if (this.#positionSignal) {
             this.settings.disconnect(this.#positionSignal);
             this.#positionSignal = 0;
+        }
+
+        if (this.#buttonHeightSignal) {
+            this.settings.disconnect(this.#buttonHeightSignal);
+            this.#buttonHeightSignal = 0;
+        }
+
+        if (this.#buttonWidthSignal) {
+            this.settings.disconnect(this.#buttonWidthSignal);
+            this.#buttonWidthSignal = 0;
         }
 
         this.settings=null;

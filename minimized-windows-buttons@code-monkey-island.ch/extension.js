@@ -24,12 +24,16 @@ export default class MinimizedButtonsExtension extends Extension {
 
         this.#coreLogic.setDisplayManager(this.#displayManager);
         this.#settingsConnector.setDisplayManager(this.#displayManager);
+
         this.#coreLogic.setButtonFactory(this.#buttonFactory);
         this.#displayManager.setButtonFactory(this.#buttonFactory);
         this.#settingsConnector.setButtonFactory(this.#buttonFactory);
-        this.#buttonFactory.setSettingsConnector(this.#settingsConnector);
 
         this.#settingsConnector.connect();
+
+        this.#buttonFactory.setSettingsConnector(this.#settingsConnector);
+        this.#buttonFactory.init();
+        
         this.#coreLogic.init(); //initialises displayManager during init
         
     }
@@ -45,8 +49,6 @@ export default class MinimizedButtonsExtension extends Extension {
         
         this.#displayManager.close();
         this.#displayManager=null;
-
-        //here buttonfactory close
 
     }
 

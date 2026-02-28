@@ -1,11 +1,10 @@
 .minimized-button {
-  padding: 6px 12px;
+  padding: 6px 12px 6px 12px;
   border-radius: 12px;
   background-color: rgba(60,60,60,1.0);
   color: white;
   /*border: 1px solid rgba(255,255,255,0.2);*/
   font-weight: 600;
-  width:150px;
 }
 
 .minimized-button:hover {

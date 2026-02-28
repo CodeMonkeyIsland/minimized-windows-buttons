@@ -22,6 +22,11 @@ export class ButtonFactory{
 		this.#settingsConnector=_settingsConnector;
 	}
 
+    init(){
+        this.#buttonWidth=this.#settingsConnector.settings.get_int('button-width');
+        this.#buttonHeight=this.#settingsConnector.settings.get_int('button-height');
+    }
+
 	getButtonWidth(){
 		return this.#buttonWidth;
 	}
@@ -53,8 +58,6 @@ export class ButtonFactory{
         const button=new St.Button({
             style_class: 'minimized-button',
             child: content,
-            width: this.#buttonWidth,
-            height: this.#buttonHeight,
             x_expand: false,
             y_expand:false,
             y_align: Clutter.ActorAlign.START,
@@ -66,16 +69,19 @@ export class ButtonFactory{
         return button;
 	}
  
-    //here also go with, height etc.
     styleButton(btn){
+        let styleString='';
+        btn.width=this.#buttonWidth;
+        btn.height=this.#buttonHeight;
 
         let buttonMargin=this.#settingsConnector.settings.get_int('margin-buttons');
         if (this.#settingsConnector.settings.get_string('position-on-screen') == 'top' ||
             this.#settingsConnector.settings.get_string('position-on-screen') == 'bottom'){
-            btn.set_style('width: 150px; margin-right: '+buttonMargin+'px; margin-bottom: 0px;'); //do i really need to reset width here? (css?)
+            styleString=styleString+'margin-right: '+buttonMargin+'px; margin-bottom: 0px;';
         }else{
-            btn.set_style('width: 150px; margin-bottom: '+buttonMargin+'px; margin-right: 0px;');
+            styleString=styleString+'margin-bottom: '+buttonMargin+'px; margin-right: 0px;';
         }
+        btn.set_style(styleString);
     }
 
 	#getWindowGicon(metaWindow) {

@@ -277,18 +277,20 @@ export class DisplayManager{
     }
 
     #setupLeaveSpaceContainer(){
-        this.destroyLeaveSpaceContainer();
-        this.#leaveSpaceContainer= new St.Widget({
-            name: 'minimized-buttons-strut-container',
-            visible: true,
-            reactive: false,
-            opacity: 0,
-            can_focus: false
-        });
-        Main.layoutManager.addChrome(this.#leaveSpaceContainer, {
-            affectsStruts: true,
-            trackFullscreen: true
-        });
+        //this.destroyLeaveSpaceContainer();
+        if (this.#leaveSpaceContainer==null){
+            this.#leaveSpaceContainer= new St.Widget({
+                name: 'minimized-buttons-strut-container',
+                visible: true,
+                reactive: false,
+                opacity: 0,
+                can_focus: false
+            });
+            Main.layoutManager.addChrome(this.#leaveSpaceContainer, {
+                affectsStruts: true,
+                trackFullscreen: true
+            });
+        }
 
         const [sc_width, sc_height] = this.#scrollContainer.get_size();
 
@@ -319,17 +321,14 @@ export class DisplayManager{
                 this.#leaveSpaceContainer.set_position(monitor.width-(sc_width+horizontalMargin+borderSpace), topPanel.height);
                 this.#leaveSpaceContainer.set_size(sc_width+horizontalMargin+borderSpace, monitor.height-topPanel.height);
                 break;
-
         }
-        
-
-
     }
 
     destroyLeaveSpaceContainer(){
         if (this.#leaveSpaceContainer==null){return;}
         Main.layoutManager.removeChrome(this.#leaveSpaceContainer);
         this.#leaveSpaceContainer.destroy();
+        this.#leaveSpaceContainer=null;
     }
 
 //---------------------------------------------------------------------------------------------------------------------
