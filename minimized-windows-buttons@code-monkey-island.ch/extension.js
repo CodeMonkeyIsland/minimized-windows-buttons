@@ -3,10 +3,12 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import {CoreLogic} from './lib/CoreLogic.js';
 import {DisplayManager} from './lib/DisplayManager.js';
 import {SettingsConnector} from './lib/SettingsConnector.js';
+import {ButtonFactory} from './lib/ButtonFactory.js';
 
 
 export default class MinimizedButtonsExtension extends Extension {
 
+    #buttonFactory=null;
     #coreLogic=null;
     #displayManager=null;
     #settingsConnector=null;
@@ -14,12 +16,18 @@ export default class MinimizedButtonsExtension extends Extension {
 
     enable(){
 
+        this.#buttonFactory=new ButtonFactory();
+
         this.#coreLogic= new CoreLogic();
         this.#settingsConnector= new SettingsConnector(this.getSettings());
         this.#displayManager = new DisplayManager(this.#coreLogic, this.#settingsConnector);
 
         this.#coreLogic.setDisplayManager(this.#displayManager);
         this.#settingsConnector.setDisplayManager(this.#displayManager);
+        this.#coreLogic.setButtonFactory(this.#buttonFactory);
+        this.#displayManager.setButtonFactory(this.#buttonFactory);
+        this.#settingsConnector.setButtonFactory(this.#buttonFactory);
+        this.#buttonFactory.setSettingsConnector(this.#settingsConnector);
 
         this.#settingsConnector.connect();
         this.#coreLogic.init(); //initialises displayManager during init
@@ -38,6 +46,7 @@ export default class MinimizedButtonsExtension extends Extension {
         this.#displayManager.close();
         this.#displayManager=null;
 
+        //here buttonfactory close
 
     }
 

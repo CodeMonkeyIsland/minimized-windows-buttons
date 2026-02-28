@@ -1,7 +1,7 @@
 /**
  * CoreLogic is for watching windows, constructing buttons and adding them to /removing them from the container
  * Placement, show/hide etc. is all done in DisplayManager
- * this class talks only to DisplayManager
+ * this class talks only to DisplayManager and ButtonFactory
  */
 
 import St from 'gi://St';
@@ -25,7 +25,7 @@ export class CoreLogic{
     container=null;
 
     #windowSignals=null
-
+ 
     //need those in DisplayManager.setWorkspaceButtonVisibility
     _windowButtons=null;
     _windowWorkspaces=null; //{window, workspaceIndex}
@@ -35,6 +35,7 @@ export class CoreLogic{
 
 
     #displayManager=null;
+    #buttonFactory=null;
 
 	constructor(){
 		this.#windowSignals=new Map();
@@ -45,6 +46,10 @@ export class CoreLogic{
 	setDisplayManager(_displayManager){
 		this.#displayManager=_displayManager;
 	}
+
+    setButtonFactory(_buttonFactory){
+        this.#buttonFactory=_buttonFactory;
+    }
 
 	init(){
 
@@ -94,8 +99,6 @@ export class CoreLogic{
             btn.destroy();
         }
         this._windowButtons.clear();
-
-        this.#displayManager.destroySizingButton();
 
         if (this.container) {
             this.container.destroy();
@@ -152,33 +155,7 @@ export class CoreLogic{
     #ensureButton(metaWindow) {
         if (this._windowButtons.has(metaWindow)) {return;};
 
-        let gicon = this.#getWindowGicon(metaWindow);
-        let icon = new St.Icon({ gicon, style_class: 'button-icon' });
-
-        let label = new St.Label({
-            style_class: 'minimized-button-label',
-            text: metaWindow.get_title(),
-            y_align: Clutter.ActorAlign.CENTER,
-            x_expand: true
-        });
-
-        let content = new St.BoxLayout({
-            style_class: 'minimized-button-content',
-            vertical: false,
-            x_expand: true,
-            y_align: Clutter.ActorAlign.CENTER
-        });
-        content.add_child(icon);
-        content.add_child(label);
-
-        const btn = new St.Button({
-            style_class: 'minimized-button',
-            child: content,
-            x_expand: false,
-            y_expand:false,
-            y_align: Clutter.ActorAlign.START,
-            x_align: Clutter.ActorAlign.START
-        });
+        const btn = this.#buttonFactory.makeButton(metaWindow);
 
         this.container.add_child(btn);
 
@@ -204,7 +181,6 @@ export class CoreLogic{
             this.#removeButton(metaWindow);
         });
 
-        this.#displayManager.styleButton(btn);
         this._windowButtons.set(metaWindow, btn);
 
         this.#displayManager.setWorkspaceButtonVisibility();
@@ -224,57 +200,6 @@ export class CoreLogic{
 
         //without this, the container leaves a gap in the buttons place
         this.container.queue_relayout();
-    }
-
-    #getWindowGicon(metaWindow) {
-        try{
-            let gicon = null;
-            let app = null;
-            let giconName = null;
-
-            const gtkAppId = metaWindow.get_gtk_application_id?.();
-            const wmClass = metaWindow.get_wm_class?.();
-            const wmInstance = metaWindow.get_wm_class_instance?.();
-            const appSys = Shell.AppSystem.get_default();
-
-            //1. gtk app id
-            if (gtkAppId){
-                app = appSys.lookup_app(gtkAppId + '.desktop');
-            }
-
-            //2. wmClass
-            if (!app && wmClass){
-                app = appSys.lookup_startup_wmclass(wmClass);
-            }
-
-            //3. wm instance
-            if (!app && wmInstance){
-                app = appSys.lookup_startup_wmclass(wmInstance);
-            }
-
-            //4. sublime, others?
-            if (!app && wmClass){
-                app=appSys.lookup_app(wmClass.replaceAll('-','_')+'.desktop');
-            }
-
-            //OK, get the gicon, preferably from app, else try something or fallback
-            if (app){
-                gicon = app.get_app_info()?.get_icon() || app.get_icon();
-            }else{
-                giconName = (gtkAppId || wmClass || wmInstance ).toLowerCase();
-                gicon = new Gio.ThemedIcon({ name: giconName });
-            }
-            if (!gicon){
-                giconName = 'application-x-executable';
-                gicon = new Gio.ThemedIcon({ name: giconName });
-            }
-
-            return gicon;
-
-        }catch(e){
-            console.error(e);
-        }
-        return new Gio.ThemedIcon({ name: 'application-x-executable' });
     }
 
 

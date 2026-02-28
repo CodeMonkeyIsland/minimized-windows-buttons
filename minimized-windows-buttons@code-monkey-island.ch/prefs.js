@@ -13,8 +13,6 @@ export default class MinimizedWindowsButtonsPreferences extends ExtensionPrefere
 
     fillPreferencesWindow(window) {
 
-        //window._settings = this.getSettings();
-
         const coverOptions = new CoverOptionsPage(this.getSettings());
         window.add(coverOptions.page);
 

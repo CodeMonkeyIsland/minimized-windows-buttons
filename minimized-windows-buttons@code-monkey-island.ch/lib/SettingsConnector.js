@@ -8,6 +8,7 @@ export class SettingsConnector{
     settings=null;
 
     #displayManager=null;
+    #buttonFactory=null;
 
     #coverSignal=0;
     #autohideSizeSignal=0;
@@ -26,9 +27,13 @@ export class SettingsConnector{
 		this.#displayManager=_displayManager;
 	}
 
+    setButtonFactory(_buttonFactory){
+        this.#buttonFactory=_buttonFactory;
+    }
+
 	connect(){
 		this.#coverSignal=this.settings.connect('changed::cover-behaviour', () => {
-            this.#displayManager.setCoverPosition();
+            this.#displayManager.setCoverOption();
             this.#displayManager.setupAutohideDetector();
             //trigger reset and update in autohide
             this.#displayManager.updateVisibilityActiveWindow();

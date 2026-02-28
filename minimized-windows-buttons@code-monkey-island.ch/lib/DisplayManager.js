@@ -1,6 +1,6 @@
 /**
  * Here, all graphical things are done
- * this class talks with SettingsConnector and CoreLogic
+ * this class talks with ButtonFactory, SettingsConnector and CoreLogic
  */
 import St from 'gi://St';
 import Clutter from 'gi://Clutter';
@@ -12,6 +12,7 @@ export class DisplayManager{
 
     #coreLogic=null;
     #settingsConnector=null;
+    #buttonFactory=null;
 
     #workspaceSignal=0;
     #focusSignal=0;
@@ -26,12 +27,13 @@ export class DisplayManager{
 
     #scrollContainer=null;
     #autohide_detect_container=null;
-    #sizingButton=null;
     #oldFocusWindow=null;
 
     #useScrollPiping=false;
     #autohideActive=false;
     #autohide_always=false;
+
+    #leaveSpaceContainer=null;
 
 	constructor(_coreLogic, _settingsConnector){
 		this.#coreLogic=_coreLogic;
@@ -78,13 +80,8 @@ export class DisplayManager{
             }
         });
 
-        this.setCoverPosition();
+        this.setCoverOption();
 
-        // Create button for sizing, then hide it
-        this.#sizingButton = new St.Button({ label: 'Hello', style_class: 'minimized-button' });
-        this.#coreLogic.container.add_child(this.#sizingButton);
-        this.#sizingButton.hide();
-        
         this.setPosition();
 
         this.#overviewShowSignal=Main.overview.connect('showing', () => this.setOverviewVisibility());
@@ -92,6 +89,10 @@ export class DisplayManager{
         this.setOverviewVisibility();
 
 	}
+
+    setButtonFactory(_buttonFactory){
+        this.#buttonFactory=_buttonFactory;
+    }
 
 	close(){
 
@@ -130,6 +131,8 @@ export class DisplayManager{
 
         this.#destroyUIElements();
 
+        this.destroyLeaveSpaceContainer();
+
         this.#settingsConnector=null;
         this.#coreLogic=null;
 
@@ -144,10 +147,6 @@ export class DisplayManager{
         let verticalMargin=this.#settingsConnector.settings.get_int('margin-vertical');
         let horizontalMargin=this.#settingsConnector.settings.get_int('margin-horizontal');
 
-        //margin-right for position top and bottom, margin-bottom for left and right
-        let buttonMargin=this.#settingsConnector.settings.get_int('margin-buttons');
-        let buttonRightMargin=0;
-        let buttonBottomMargin=0;
         let scrollContainerHeight=0;
         let scrollContainerWidth=0;
 
@@ -160,10 +159,9 @@ export class DisplayManager{
         switch (position){
             case 'top':
                 this.#scrollContainer.set_layout_manager(new Clutter.BoxLayout({orientation: Clutter.Orientation.HORIZONTAL}));
-                buttonRightMargin=buttonMargin;
                 xPos=0;
                 yPos=topPanel.height+verticalMargin;
-                scrollContainerHeight=this.#sizingButton.height;
+                scrollContainerHeight=this.#buttonFactory.getButtonHeight();
                 scrollContainerWidth=monitor.width;
                 this.#coreLogic.container.set_layout_manager(new Clutter.BoxLayout({ orientation: Clutter.Orientation.HORIZONTAL}));
                 this.#scrollContainer.set_style('padding: 0px '+horizontalMargin+'px 0px '+horizontalMargin+'px;');
@@ -171,10 +169,9 @@ export class DisplayManager{
                 break;
             case 'bottom':
                 this.#scrollContainer.set_layout_manager(new Clutter.BoxLayout({orientation: Clutter.Orientation.HORIZONTAL}));
-                buttonRightMargin=buttonMargin;
                 xPos=0;
-                yPos=monitor.height - this.#sizingButton.height - verticalMargin;
-                scrollContainerHeight=this.#sizingButton.height;
+                yPos=monitor.height - this.#buttonFactory.getButtonHeight() - verticalMargin;
+                scrollContainerHeight=this.#buttonFactory.getButtonHeight();
                 scrollContainerWidth=monitor.width;
                 this.#coreLogic.container.set_layout_manager(new Clutter.BoxLayout({ orientation: Clutter.Orientation.HORIZONTAL}));
                 this.#scrollContainer.set_style('padding: 0px '+horizontalMargin+'px 0px '+horizontalMargin+'px;');
@@ -182,22 +179,20 @@ export class DisplayManager{
                 break;
             case 'left':
                 this.#scrollContainer.set_layout_manager(new Clutter.BoxLayout({orientation: Clutter.Orientation.VERTICAL}));
-                buttonBottomMargin=buttonMargin;
                 xPos=horizontalMargin;
                 yPos=topPanel.height;
                 scrollContainerHeight=monitor.height-topPanel.height;
-                scrollContainerWidth=this.#sizingButton.width;
+                scrollContainerWidth=this.#buttonFactory.getButtonWidth();
                 this.#coreLogic.container.set_layout_manager(new Clutter.BoxLayout({ orientation: Clutter.Orientation.VERTICAL}));
                 this.#scrollContainer.set_style('padding: '+verticalMargin+'px 0px '+verticalMargin+'px 0px;');
                 this.#useScrollPiping=false;
                 break;
             case 'right':
                 this.#scrollContainer.set_layout_manager(new Clutter.BoxLayout({orientation: Clutter.Orientation.VERTICAL}));
-                buttonBottomMargin=buttonMargin;
-                xPos=monitor.width-this.#sizingButton.width-horizontalMargin*2;
+                xPos=monitor.width-this.#buttonFactory.getButtonWidth()-horizontalMargin;
                 yPos=topPanel.height;
                 scrollContainerHeight=monitor.height-topPanel.height;
-                scrollContainerWidth=this.#sizingButton.width;
+                scrollContainerWidth=this.#buttonFactory.getButtonWidth();
                 this.#coreLogic.container.set_layout_manager(new Clutter.BoxLayout({ orientation: Clutter.Orientation.VERTICAL}));
                 this.#scrollContainer.set_style('padding: '+verticalMargin+'px 0px '+verticalMargin+'px 0px;');
                 this.#useScrollPiping=false;
@@ -211,14 +206,20 @@ export class DisplayManager{
         this.#scrollContainer.queue_relayout();
 
         for (const child of this.#coreLogic.container.get_children()) {
-            child.set_style('margin-right: '+buttonRightMargin+'px; margin-bottom: '+buttonBottomMargin+'px;');
+            this.#buttonFactory.styleButton(child);
         }
 
         this.setupAutohideDetector();
 
+        if(this.#settingsConnector.settings.get_string('cover-behaviour')=='leave space'){
+            this.#setupLeaveSpaceContainer();
+        }
+
     }
 
-    setCoverPosition(){
+
+    //set according to cover option
+    setCoverOption(){
 
         if (this.#scrollContainer.get_parent()) {
             Main.layoutManager.removeChrome(this.#scrollContainer);
@@ -229,33 +230,31 @@ export class DisplayManager{
         switch (this.#settingsConnector.settings.get_string('cover-behaviour')){
 
             case 'front':
-                this.#scrollContainer.reactive = true;//false;
                 affectInput=false;
                 this.#autohideActive=false;
                 this.#autohide_always=false;
+                this.destroyLeaveSpaceContainer();
                 break;
 
-            //only one with affectstruts=true. probably not working, because container is not at the edge anymore....
-            //setup strut-container here? needs to activate/deactivate according to cover behavior and change place with position.
             case 'leave space':
-                this.#scrollContainer.reactive = true;//false;
                 affectInput=false;
                 this.#autohideActive=false;
                 this.#autohide_always=false;
+                this.#setupLeaveSpaceContainer();
                 break;
 
             case 'autohide':
-                this.#scrollContainer.reactive = true;
                 affectInput=true;
                 this.#autohideActive=true;
                 this.#autohide_always=false;
+                this.destroyLeaveSpaceContainer();
                 break;
 
             case 'autohide always':
-                this.#scrollContainer.reactive = true;
                 affectInput=true;
                 this.#autohideActive=true;
                 this.#autohide_always=true;
+                this.destroyLeaveSpaceContainer();
                 break;
         }
 
@@ -275,6 +274,62 @@ export class DisplayManager{
 
         this.setScrollcontainerReactivity();
         
+    }
+
+    #setupLeaveSpaceContainer(){
+        this.destroyLeaveSpaceContainer();
+        this.#leaveSpaceContainer= new St.Widget({
+            name: 'minimized-buttons-strut-container',
+            visible: true,
+            reactive: false,
+            opacity: 0,
+            can_focus: false
+        });
+        Main.layoutManager.addChrome(this.#leaveSpaceContainer, {
+            affectsStruts: true,
+            trackFullscreen: true
+        });
+
+        const [sc_width, sc_height] = this.#scrollContainer.get_size();
+
+        let verticalMargin=this.#settingsConnector.settings.get_int('margin-vertical');
+        let horizontalMargin=this.#settingsConnector.settings.get_int('margin-horizontal');
+
+        let position = this.#settingsConnector.settings.get_string('position-on-screen');
+        let monitor=Main.layoutManager.primaryMonitor;
+        let topPanel=Main.panel;
+
+        //have a settings entry for this
+        let borderSpace=3;
+
+        switch (position){
+            case 'top':
+                this.#leaveSpaceContainer.set_position(0, 0);
+                this.#leaveSpaceContainer.set_size(monitor.width, sc_height+verticalMargin+topPanel.height+borderSpace);
+                break;
+            case 'bottom':
+                this.#leaveSpaceContainer.set_position(0, monitor.height-(sc_height+verticalMargin+borderSpace));
+                this.#leaveSpaceContainer.set_size(monitor.width, sc_height+verticalMargin+borderSpace);
+                break;
+            case 'left':
+                this.#leaveSpaceContainer.set_position(0, topPanel.height);
+                this.#leaveSpaceContainer.set_size(sc_width+horizontalMargin+borderSpace, monitor.height-topPanel.height);
+                break;
+            case 'right':
+                this.#leaveSpaceContainer.set_position(monitor.width-(sc_width+horizontalMargin+borderSpace), topPanel.height);
+                this.#leaveSpaceContainer.set_size(sc_width+horizontalMargin+borderSpace, monitor.height-topPanel.height);
+                break;
+
+        }
+        
+
+
+    }
+
+    destroyLeaveSpaceContainer(){
+        if (this.#leaveSpaceContainer==null){return;}
+        Main.layoutManager.removeChrome(this.#leaveSpaceContainer);
+        this.#leaveSpaceContainer.destroy();
     }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -479,17 +534,6 @@ export class DisplayManager{
         }
     }
 
-    //calling this from coreLogic
-    styleButton(btn){
-        let buttonMargin=this.#settingsConnector.settings.get_int('margin-buttons');
-        if (this.#settingsConnector.settings.get_string('position-on-screen') == 'top' ||
-            this.#settingsConnector.settings.get_string('position-on-screen') == 'bottom'){
-            btn.set_style('width: 150px; margin-right: '+buttonMargin+'px; margin-bottom: 0px;'); //do i really need to reset width here? (css?)
-        }else{
-            btn.set_style('width: 150px; margin-bottom: '+buttonMargin+'px; margin-right: 0px;');
-        }
-    }
-
     //for example at orientation change
     monitorChanged(){
         this.setPosition();
@@ -546,7 +590,7 @@ export class DisplayManager{
         Main.layoutManager.removeChrome(this.#scrollContainer);
         Main.layoutManager.removeChrome(this.#autohide_detect_container);
 
-        //destroying sizingButton, buttons and container in coreLogic.close()
+        //destroying buttons and container in coreLogic.close()
 
         if (this.#scrollContainer) {
             this.#scrollContainer.destroy();
@@ -556,13 +600,6 @@ export class DisplayManager{
         if (this.#autohide_detect_container) {
             this.#autohide_detect_container.destroy();
             this.#autohide_detect_container = null;
-        }
-    }
-
-    destroySizingButton(){
-        if (this.#sizingButton) {
-            this.#sizingButton.destroy();
-            this.#sizingButton = null;
         }
     }
 

@@ -154,7 +154,7 @@ export default class PlacementPage{
 
         // Keep slider synced if settings change elsewhere
         this.#settings.connect('changed::margin-buttons', () => {
-            slider3.set_value(this.#settings.get_int('margin-horizontal'));
+            slider3.set_value(this.#settings.get_int('margin-buttons'));
         });
 
         row3.add_suffix(slider3);
