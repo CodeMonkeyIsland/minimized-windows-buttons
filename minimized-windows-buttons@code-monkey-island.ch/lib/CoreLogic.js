@@ -11,6 +11,7 @@ import Shell from 'gi://Shell';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+//not nulling this on disable! (module level const should be gc'd on disable)
 const Mtk = imports.gi.Mtk;
 
 
@@ -96,7 +97,6 @@ export class CoreLogic{
 
         this.#displayManager.destroySizingButton();
 
-
         if (this.container) {
             this.container.destroy();
             this.container = null;
@@ -150,7 +150,7 @@ export class CoreLogic{
     }
 
     #ensureButton(metaWindow) {
-        if (this._windowButtons.has(metaWindow)) {return};
+        if (this._windowButtons.has(metaWindow)) {return;};
 
         let gicon = this.#getWindowGicon(metaWindow);
         let icon = new St.Icon({ gicon, style_class: 'button-icon' });
@@ -186,16 +186,15 @@ export class CoreLogic{
             let currentWorkspace = global.workspace_manager.get_active_workspace();
             metaWindow.change_workspace(currentWorkspace);
 
+            //window-open-animation: this feels like it belongs in displaymanager
             let [x, y] = btn.get_transformed_position();
             let [w, h] = btn.get_transformed_size();
-
             let rect = new Mtk.Rectangle({
                 x: Math.floor(x),
                 y: Math.floor(y),
                 width: Math.floor(w),
                 height: Math.floor(h),
             });
-
             metaWindow.set_icon_geometry(rect);
 
 
@@ -267,7 +266,7 @@ export class CoreLogic{
             }
             if (!gicon){
                 giconName = 'application-x-executable';
-            gicon = new Gio.ThemedIcon({ name: giconName });
+                gicon = new Gio.ThemedIcon({ name: giconName });
             }
 
             return gicon;

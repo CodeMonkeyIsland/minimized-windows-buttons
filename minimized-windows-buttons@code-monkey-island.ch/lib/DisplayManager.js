@@ -224,43 +224,46 @@ export class DisplayManager{
             Main.layoutManager.removeChrome(this.#scrollContainer);
         }
 
-        if (this.#settingsConnector.settings.get_string('cover-behaviour') == "front"){
-            this.#scrollContainer.reactive = true;//false;
-            Main.layoutManager.addChrome(this.#scrollContainer,{
-                affectsInputRegion: false,
-                trackFullscreen: true,
-                affectsStruts: false
-            });
-            this.#autohideActive=false;
-            this.#autohide_always=false;
-        }else if(this.#settingsConnector.settings.get_string('cover-behaviour') == "leave space"){
-            this.#scrollContainer.reactive = true;//false;
-            Main.layoutManager.addChrome(this.#scrollContainer,{
-                affectsInputRegion: false,
-                trackFullscreen: true,
-                affectsStruts: true
-            });
-            this.#autohideActive=false;
-            this.#autohide_always=false;
-        }else if(this.#settingsConnector.settings.get_string('cover-behaviour') == "autohide"){
-            this.#scrollContainer.reactive = true;
-            Main.layoutManager.addChrome(this.#scrollContainer,{
-                affectsInputRegion: true,
-                trackFullscreen: true,
-                affectsStruts: false
-            });
-            this.#autohideActive=true;
-            this.#autohide_always=false;
-        }else if (this.#settingsConnector.settings.get_string('cover-behaviour') == "autohide always"){
-            this.#scrollContainer.reactive = true;
-            Main.layoutManager.addChrome(this.#scrollContainer,{
-                affectsInputRegion: true,
-                trackFullscreen: true,
-                affectsStruts: false
-            });
-            this.#autohideActive=true;
-            this.#autohide_always=true;
+        let affectInput=false; //set it to properly init?
+
+        switch (this.#settingsConnector.settings.get_string('cover-behaviour')){
+
+            case 'front':
+                this.#scrollContainer.reactive = true;//false;
+                affectInput=false;
+                this.#autohideActive=false;
+                this.#autohide_always=false;
+                break;
+
+            //only one with affectstruts=true. probably not working, because container is not at the edge anymore....
+            //setup strut-container here? needs to activate/deactivate according to cover behavior and change place with position.
+            case 'leave space':
+                this.#scrollContainer.reactive = true;//false;
+                affectInput=false;
+                this.#autohideActive=false;
+                this.#autohide_always=false;
+                break;
+
+            case 'autohide':
+                this.#scrollContainer.reactive = true;
+                affectInput=true;
+                this.#autohideActive=true;
+                this.#autohide_always=false;
+                break;
+
+            case 'autohide always':
+                this.#scrollContainer.reactive = true;
+                affectInput=true;
+                this.#autohideActive=true;
+                this.#autohide_always=true;
+                break;
         }
+
+        Main.layoutManager.addChrome(this.#scrollContainer,{
+            affectsInputRegion: affectInput,
+            trackFullscreen: true,
+            affectsStruts: false
+        });
 
         this.#scrollContainer.show();
         this.#scrollContainer.queue_relayout();
@@ -404,7 +407,7 @@ export class DisplayManager{
 
         let activeWin = global.display.get_focus_window();
         if (!activeWin) {
-            console.log('no window');
+            console.log('no active window');
             return false;
         }
 
