@@ -1,6 +1,6 @@
 /**
  * self-explanatory, needs no imports
- * talks only to DisplayManager
+ * talks only to DisplayManager and ButtonFactory
  */
 
 export class SettingsConnector{
@@ -17,10 +17,29 @@ export class SettingsConnector{
     #marginButtonSignal=0;
     #positionSignal=0;
     #perWorkspaceSignal=0;
-
     #buttonHeightSignal=0;
     #buttonWidthSignal=0;
+    #iconHeightSignal=0;
+    #lineHeightSignal=0;
 
+    //one signal per var would really do. should introduce some kind of checksum var.
+    #text_color_r_Signal=0;
+    #text_color_g_Signal=0;
+    #text_color_b_Signal=0;
+    #text_color_a_Signal=0;
+
+    #bg_color_r_Signal=0;
+    #bg_color_g_Signal=0;
+    #bg_color_b_Signal=0;
+    #bg_color_a_Signal=0;
+
+    #border_color_r_Signal=0;
+    #border_color_g_Signal=0;
+    #border_color_b_Signal=0;
+    #border_color_a_Signal=0;
+
+    #border_radius_Signal=0;
+    #font_weight_Signal=0;
 
 	constructor(_settings){
 		this.settings=_settings;
@@ -83,6 +102,77 @@ export class SettingsConnector{
             this.#displayManager.setScrollcontainerReactivity();
         });
 
+        this.#buttonWidthSignal=this.settings.connect('changed::icon-height', () => {
+            this.#buttonFactory.init();
+            this.#displayManager.setPosition();
+        });
+
+        this.#buttonWidthSignal=this.settings.connect('changed::line-height', () => {
+            this.#buttonFactory.init();
+            this.#displayManager.setPosition();
+        });
+
+
+        this.#text_color_r_Signal=this.settings.connect('changed::text-color-r', () => {
+            this.#buttonFactory.init();
+            this.#displayManager.setPosition();
+        });
+        this.#text_color_g_Signal=this.settings.connect('changed::text-color-g', () => {
+            this.#buttonFactory.init();
+            this.#displayManager.setPosition();
+        });
+        this.#text_color_b_Signal=this.settings.connect('changed::text-color-b', () => {
+            this.#buttonFactory.init();
+            this.#displayManager.setPosition();
+        });
+        this.#text_color_a_Signal=this.settings.connect('changed::text-color-a', () => {
+            this.#buttonFactory.init();
+            this.#displayManager.setPosition();
+        });
+
+        this.#bg_color_r_Signal=this.settings.connect('changed::bg-color-r', () => {
+            this.#buttonFactory.init();
+            this.#displayManager.setPosition();
+        });
+        this.#bg_color_g_Signal=this.settings.connect('changed::bg-color-g', () => {
+            this.#buttonFactory.init();
+            this.#displayManager.setPosition();
+        });
+        this.#bg_color_b_Signal=this.settings.connect('changed::bg-color-b', () => {
+            this.#buttonFactory.init();
+            this.#displayManager.setPosition();
+        });
+        this.#bg_color_a_Signal=this.settings.connect('changed::bg-color-a', () => {
+            this.#buttonFactory.init();
+            this.#displayManager.setPosition();
+        });
+
+        this.#border_color_r_Signal=this.settings.connect('changed::border-color-r', () => {
+            this.#buttonFactory.init();
+            this.#displayManager.setPosition();
+        });
+        this.#border_color_g_Signal=this.settings.connect('changed::border-color-g', () => {
+            this.#buttonFactory.init();
+            this.#displayManager.setPosition();
+        });
+        this.#border_color_b_Signal=this.settings.connect('changed::border-color-b', () => {
+            this.#buttonFactory.init();
+            this.#displayManager.setPosition();
+        });
+        this.#border_color_a_Signal=this.settings.connect('changed::border-color-a', () => {
+            this.#buttonFactory.init();
+            this.#displayManager.setPosition();
+        });
+
+        this.#border_radius_Signal=this.settings.connect('changed::border-radius', () => {
+            this.#buttonFactory.init();
+            this.#displayManager.setPosition();
+        });
+
+        this.#font_weight_Signal=this.settings.connect('changed::font-weight', () => {
+            this.#buttonFactory.init();
+            this.#displayManager.setPosition();
+        });
 
 	}
 
@@ -126,6 +216,79 @@ export class SettingsConnector{
             this.settings.disconnect(this.#buttonWidthSignal);
             this.#buttonWidthSignal = 0;
         }
+
+        if (this.#iconHeightSignal) {
+            this.settings.disconnect(this.#iconHeightSignal);
+            this.#iconHeightSignal = 0;
+        }
+
+        if (this.#lineHeightSignal) {
+            this.settings.disconnect(this.#lineHeightSignal);
+            this.#lineHeightSignal = 0;
+        }
+
+
+        if (this.#text_color_r_Signal) {
+            this.settings.disconnect(this.#text_color_r_Signal);
+            this.#text_color_r_Signal = 0;
+        }
+        if (this.#text_color_g_Signal) {
+            this.settings.disconnect(this.#text_color_g_Signal);
+            this.#text_color_g_Signal = 0;
+        }
+        if (this.#text_color_b_Signal) {
+            this.settings.disconnect(this.#text_color_b_Signal);
+            this.#text_color_b_Signal = 0;
+        }
+        if (this.#text_color_a_Signal) {
+            this.settings.disconnect(this.#text_color_a_Signal);
+            this.#text_color_a_Signal = 0;
+        }
+
+        if (this.#bg_color_r_Signal) {
+            this.settings.disconnect(this.#bg_color_r_Signal);
+            this.#bg_color_r_Signal = 0;
+        }
+        if (this.#bg_color_g_Signal) {
+            this.settings.disconnect(this.#bg_color_g_Signal);
+            this.#bg_color_g_Signal = 0;
+        }
+        if (this.#bg_color_b_Signal) {
+            this.settings.disconnect(this.#bg_color_b_Signal);
+            this.#bg_color_b_Signal = 0;
+        }
+        if (this.#bg_color_a_Signal) {
+            this.settings.disconnect(this.#bg_color_a_Signal);
+            this.#bg_color_a_Signal = 0;
+        }
+
+        if (this.#border_color_r_Signal) {
+            this.settings.disconnect(this.#border_color_r_Signal);
+            this.#border_color_r_Signal = 0;
+        }
+        if (this.#border_color_g_Signal) {
+            this.settings.disconnect(this.#border_color_g_Signal);
+            this.#border_color_g_Signal = 0;
+        }
+        if (this.#border_color_b_Signal) {
+            this.settings.disconnect(this.#border_color_b_Signal);
+            this.#border_color_b_Signal = 0;
+        }
+        if (this.#border_color_a_Signal) {
+            this.settings.disconnect(this.#border_color_a_Signal);
+            this.#border_color_a_Signal = 0;
+        }
+
+        if (this.#border_radius_Signal) {
+            this.settings.disconnect(this.#border_radius_Signal);
+            this.#border_radius_Signal = 0;
+        }
+
+        if (this.#font_weight_Signal) {
+            this.settings.disconnect(this.#font_weight_Signal);
+            this.#font_weight_Signal = 0;
+        }
+
 
         this.settings=null;
 

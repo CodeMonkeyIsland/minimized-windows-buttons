@@ -178,7 +178,9 @@ export class CoreLogic{
             try { metaWindow.unminimize(); } catch(e) { console.error(e); }
             try { metaWindow.activate(global.get_current_time());} catch(e) { console.error(e); }
 
+            this._windowWorkspaces.delete(metaWindow);
             this.#removeButton(metaWindow);
+            //this.#unwatchWindow(metaWindow);
         });
 
         this._windowButtons.set(metaWindow, btn);

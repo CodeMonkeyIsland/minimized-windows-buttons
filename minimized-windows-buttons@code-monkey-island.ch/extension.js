@@ -13,9 +13,7 @@ export default class MinimizedButtonsExtension extends Extension {
     #displayManager=null;
     #settingsConnector=null;
 
-
     enable(){
-
         this.#buttonFactory=new ButtonFactory();
 
         this.#coreLogic= new CoreLogic();
@@ -35,12 +33,10 @@ export default class MinimizedButtonsExtension extends Extension {
         this.#buttonFactory.init();
         
         this.#coreLogic.init(); //initialises displayManager during init
-        
     }
 
 
     disable(){
-
         this.#settingsConnector.disconnect();
         this.#settingsConnector=null;
 
@@ -50,6 +46,7 @@ export default class MinimizedButtonsExtension extends Extension {
         this.#displayManager.close();
         this.#displayManager=null;
 
+        this.#buttonFactory=null; //needs no close()
     }
 
 } //MinimizedButtonsExtension extends Extension
