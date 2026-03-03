@@ -1,5 +1,5 @@
 /**
- * Makes Buttons
+ * Makes and changes Buttons
  */
 
 import St from 'gi://St';
@@ -19,16 +19,15 @@ export class ButtonFactory{
     #iconHeight=0;
     #lineHeight=0;
 
+    //waaaay too many vars and hooks. make 12 to 3 in prefs, have additional rgba var in schema->string?
     #text_color_r=0;
     #text_color_g=0;
     #text_color_b=0;
     #text_color_a=0.0;
-
     #bg_color_r=0;
     #bg_color_g=0;
     #bg_color_b=0;
     #bg_color_a=0.0;
-
     #border_color_r=0;
     #border_color_g=0;
     #border_color_b=0;
@@ -110,7 +109,7 @@ export class ButtonFactory{
         this.styleButton(button);
 
         return button;
-	}
+	} 
  
     styleButton(btn){
         let styleString='';
@@ -126,6 +125,7 @@ export class ButtonFactory{
                         'font-weight: '+this.#font_weight);
 
         styleString = styleString+ 'background-color: rgba('+this.#bg_color_r+','+this.#bg_color_g+','+this.#bg_color_b+','+this.#bg_color_a+'); ';
+
         styleString = styleString+ 'border-color: rgba('+this.#border_color_r+','+this.#border_color_g+','+this.#border_color_b+','+this.#border_color_a+'); ';
         styleString = styleString+ 'border-width: 1px; ';
         styleString = styleString+ 'border-radius: '+this.#border_radius+'px; ';

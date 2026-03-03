@@ -1,5 +1,6 @@
 /**
  * self-explanatory, needs no imports
+ * 
  * talks only to DisplayManager and ButtonFactory
  */
 
@@ -27,12 +28,10 @@ export class SettingsConnector{
     #text_color_g_Signal=0;
     #text_color_b_Signal=0;
     #text_color_a_Signal=0;
-
     #bg_color_r_Signal=0;
     #bg_color_g_Signal=0;
     #bg_color_b_Signal=0;
     #bg_color_a_Signal=0;
-
     #border_color_r_Signal=0;
     #border_color_g_Signal=0;
     #border_color_b_Signal=0;
@@ -40,6 +39,7 @@ export class SettingsConnector{
 
     #border_radius_Signal=0;
     #font_weight_Signal=0;
+    #leave_space_margin_Signal=0;
 
 	constructor(_settings){
 		this.settings=_settings;
@@ -174,6 +174,10 @@ export class SettingsConnector{
             this.#displayManager.setPosition();
         });
 
+        this.#leave_space_margin_Signal=this.settings.connect('changed::leave-space-margin', () => {
+            this.#displayManager.setCoverOption();
+        });
+
 	}
 
 	disconnect(){
@@ -289,6 +293,10 @@ export class SettingsConnector{
             this.#font_weight_Signal = 0;
         }
 
+         if (this.#leave_space_margin_Signal) {
+            this.settings.disconnect(this.#leave_space_margin_Signal);
+            this.#leave_space_margin_Signal = 0;
+        }
 
         this.settings=null;
 

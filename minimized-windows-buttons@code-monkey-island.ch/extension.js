@@ -8,10 +8,10 @@ import {ButtonFactory} from './lib/ButtonFactory.js';
 
 export default class MinimizedButtonsExtension extends Extension {
 
-    #buttonFactory=null;
     #coreLogic=null;
     #displayManager=null;
     #settingsConnector=null;
+    #buttonFactory=null;
 
     enable(){
         this.#buttonFactory=new ButtonFactory();

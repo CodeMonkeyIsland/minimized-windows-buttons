@@ -152,5 +152,11 @@
       <summary>font weight</summary>
     </key>
 
+    <key name="leave-space-margin" type="i">
+      <default>3</default>
+      <range min="0" max="50"/>
+      <summary>font weight</summary>
+    </key>
+
   </schema>
 </schemalist>

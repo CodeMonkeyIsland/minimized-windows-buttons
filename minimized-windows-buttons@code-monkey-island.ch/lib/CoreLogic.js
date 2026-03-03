@@ -1,6 +1,8 @@
 /**
- * CoreLogic is for watching windows, constructing buttons and adding them to /removing them from the container
+ * CoreLogic is for watching windows, getting ButtonFactory to make the Buttons 
+ * and adding them to /removing them from the container
  * Placement, show/hide etc. is all done in DisplayManager
+ * 
  * this class talks only to DisplayManager and ButtonFactory
  */
 
@@ -32,7 +34,6 @@ export class CoreLogic{
 
     #sessionSignal=0;
     #displaySignal=0;
-
 
     #displayManager=null;
     #buttonFactory=null;

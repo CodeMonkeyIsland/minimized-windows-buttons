@@ -1,5 +1,6 @@
 /**
  * Here, all graphical things are done
+ * 
  * this class talks with ButtonFactory, SettingsConnector and CoreLogic
  */
 import St from 'gi://St';
@@ -7,12 +8,16 @@ import Clutter from 'gi://Clutter';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+import DisplayManager_AutohideHelper from './DisplayManager_AutohideHelper.js';
+
 
 export class DisplayManager{
 
     #coreLogic=null;
     #settingsConnector=null;
     #buttonFactory=null;
+
+    #autohideHelper=null;
 
     #workspaceSignal=0;
     #focusSignal=0;
@@ -40,7 +45,13 @@ export class DisplayManager{
 		this.#settingsConnector=_settingsConnector;
 	}
 
+    setButtonFactory(_buttonFactory){
+        this.#buttonFactory=_buttonFactory;
+    }
+
 	init(){
+
+        this.#autohideHelper=new DisplayManager_AutohideHelper();
 
         this.#scrollContainer = new St.ScrollView({
             overlay_scrollbars: false,
@@ -90,14 +101,10 @@ export class DisplayManager{
 
 	}
 
-    setButtonFactory(_buttonFactory){
-        this.#buttonFactory=_buttonFactory;
-    }
-
 	close(){
 
-        this.#disconnectAutohideSignals();
-        this.#disconnectWindowDragAndRezizeSignals();
+        this.disconnectAutohideSignals();
+        this.disconnectWindowDragAndRezizeSignals();
 
         if (this.#workspaceSignal) {
             global.workspace_manager.disconnect(this.#workspaceSignal);
@@ -136,11 +143,14 @@ export class DisplayManager{
         this.#settingsConnector=null;
         this.#coreLogic=null;
 
+        this.#autohideHelper=null;
+
 	}
 
-//---------------------------------------------------------------------------------------------------------------------
-//---------------------------------------setPosition/ set Cover position-----------------------------------------------
-//---------------------------------------------------------------------------------------------------------------------
+
+    //---------------------------------------------------------------------------------------------------------------------
+    //---------------------------------------setPosition/ set Cover position-----------------------------------------------
+    //---------------------------------------------------------------------------------------------------------------------
 
     setPosition(){
         let position = this.#settingsConnector.settings.get_string('position-on-screen');
@@ -228,28 +238,24 @@ export class DisplayManager{
         let affectInput=false; //set it to properly init?
 
         switch (this.#settingsConnector.settings.get_string('cover-behaviour')){
-
             case 'front':
                 affectInput=false;
                 this.#autohideActive=false;
                 this.#autohide_always=false;
                 this.destroyLeaveSpaceContainer();
                 break;
-
             case 'leave space':
                 affectInput=false;
                 this.#autohideActive=false;
                 this.#autohide_always=false;
                 this.#setupLeaveSpaceContainer();
                 break;
-
             case 'autohide':
                 affectInput=true;
                 this.#autohideActive=true;
                 this.#autohide_always=false;
                 this.destroyLeaveSpaceContainer();
                 break;
-
             case 'autohide always':
                 affectInput=true;
                 this.#autohideActive=true;
@@ -276,6 +282,10 @@ export class DisplayManager{
         
     }
 
+    //---------------------------------------------------------------------------------------------------------------------
+    //-----------------------------------------cover-leave-space-option----------------------------------------------------
+    //---------------------------------------------------------------------------------------------------------------------
+
     #setupLeaveSpaceContainer(){
         //this.destroyLeaveSpaceContainer();
         if (this.#leaveSpaceContainer==null){
@@ -301,8 +311,7 @@ export class DisplayManager{
         let monitor=Main.layoutManager.primaryMonitor;
         let topPanel=Main.panel;
 
-        //have a settings entry for this
-        let borderSpace=3;
+        let borderSpace=this.#settingsConnector.settings.get_int('leave-space-margin');
 
         switch (position){
             case 'top':
@@ -331,167 +340,47 @@ export class DisplayManager{
         this.#leaveSpaceContainer=null;
     }
 
-//---------------------------------------------------------------------------------------------------------------------
-//-----------------------------------------autohide--------------------------------------------------------------------
-//---------------------------------------------------------------------------------------------------------------------
-    focusWindowChange(){ 
-        if (this.#autohideActive){
-            let win = global.display.get_focus_window();
-            if (!win) {
-                console.log('no window');
-                return false;
-            }
-            this.#disconnectWindowDragAndRezizeSignals();
-            this.#resizeSignal = win.connect('size-changed', () => {
-                this.updateVisibilityActiveWindow();
-            });
-
-            this.#positionSignal = win.connect('position-changed', () => {
-                this.updateVisibilityActiveWindow();
-            });
-            this.#oldFocusWindow=win;
-            this.updateVisibilityActiveWindow();
-        }
-    }
-
+    
+    //---------------------------------------------------------------------------------------------------------------------
+    //-----------------------------------------autohide--------------------------------------------------------------------
+    //---------------------------------------------------------------------------------------------------------------------
+    //lets put this into a helper, DM has always been too big and is not really getting smaller
+    //leave only piping functions here
+    //Problem: disconnect-calls! solution: call back & public disconnect-fkt in DM?
 
     updateVisibilityActiveWindow() {
+        this.#autohideHelper.updateVisibilityActiveWindow(this.#scrollContainer, this.#autohideActive, this.#autohide_always);
+    }
 
-        if (!this.#scrollContainer){return};
+    setAutohideDefaultSize(){
+        this.#autohideHelper.setAutohideDefaultSize(this.#settingsConnector.settings, this.#autohide_detect_container);
+    }
 
-        if (this.#autohideActive){
-            if (this.#autohide_always){
-                this.#scrollContainer.hide();
-            }else{
-                if (this.#isContainerCoveredByActiveWindow()) {
-                    this.#scrollContainer.hide();
-                }else{
-                    this.#scrollContainer.show();
-                }
-            }
-        }else{
-            this.#scrollContainer.show();
-        }
+    focusWindowChange(){
+        this.#autohideHelper.focusWindowChange(this, this.#autohideActive, this.#oldFocusWindow);
+    }
+    //need public callback set signal because moving stuff to autohide-helper
+    setResizeSignal(_signal){
+        this.#resizeSignal=_signal;
+    }
+    setPositionSignal(_signal){
+        this.#positionSignal=_signal;
     }
 
     //this is a hover detect container. show buttons on hover! (wrong name)
     setupAutohideDetector(){
-
-        this.#disconnectAutohideSignals();
-
-        if (this.#autohide_detect_container.get_parent()) {
-            Main.layoutManager.removeChrome(this.#autohide_detect_container);
-        }
-        Main.layoutManager.addChrome(this.#autohide_detect_container, {
-                affectsInputRegion: false,
-                trackFullscreen: true,
-                affectsStruts: false
-        });
-
-        if (this.#autohideActive){
-
-            this.setAutohideDefaultSize();
-            this.#autohide_detect_container.show();
-            this.#autohide_detect_container.queue_relayout();
-
-            this.#autohide_showSignal=this.#autohide_detect_container.connect('enter-event', () => {
-                this.#scrollContainer.show();
-            });
-
-            if (this.#settingsConnector.settings.get_string('cover-behaviour') == "autohide"){
-                this.updateVisibilityActiveWindow();
-                this.#autohide_leaveSignal=this.#scrollContainer.connect('leave-event', () => {
-                        if (!this.#pointerInside(this.#scrollContainer)) {
-                            this.updateVisibilityActiveWindow();
-                        }
-                });
-            }else if (this.#settingsConnector.settings.get_string('cover-behaviour') == "autohide always"){
-                this.#scrollContainer.hide();
-                this.#autohide_leaveSignal=this.#scrollContainer.connect('leave-event', () => {
-                        if (!this.#pointerInside(this.#scrollContainer)) {
-                            this.#scrollContainer.hide();
-                        }
-                });
-            }
-
-        }else{
-            this.#autohide_detect_container.hide();
-        }
-        this.#autohide_detect_container.queue_relayout();
+        this.#autohideHelper.setupAutohideDetector(this, this.#scrollContainer, this.#autohide_detect_container, this.#autohideActive, this.#settingsConnector.settings);
+    }
+    set_Autohide_Show_Signal(_signal){
+        this.#autohide_showSignal=_signal;
+    }
+    set_Autohide_Leave_Signal(_signal){
+        this.#autohide_leaveSignal=_signal;
     }
 
-    #pointerInside(actor) {
-        const [x, y] = global.get_pointer();
-        const box = actor.get_allocation_box();
-        return x >= box.x1 && 
-                x <= box.x2 && 
-                y >= box.y1 && 
-                y <= box.y2;
-    }
-
-    setAutohideDefaultSize(){
-        let containerSize=this.#settingsConnector.settings.get_int('autohide-container-size');//5;
-        switch (this.#settingsConnector.settings.get_string('position-on-screen')){
-            case 'top':
-                this.#autohide_detect_container.set_position(0, Main.panel.height);
-                this.#autohide_detect_container.width=Main.layoutManager.primaryMonitor.width;
-                this.#autohide_detect_container.height=containerSize;
-                break;
-            case 'bottom':
-                this.#autohide_detect_container.set_position(0, Main.layoutManager.primaryMonitor.height-containerSize);
-                this.#autohide_detect_container.width=Main.layoutManager.primaryMonitor.width;
-                this.#autohide_detect_container.height=containerSize;
-                break;
-            case 'left':
-                this.#autohide_detect_container.set_position(0, Main.panel.height);
-                this.#autohide_detect_container.width=containerSize;
-                this.#autohide_detect_container.height=Main.layoutManager.primaryMonitor.height-Main.panel.height;
-                break;
-            case 'right':
-                this.#autohide_detect_container.set_position(Main.layoutManager.primaryMonitor.width-containerSize, Main.panel.height);
-                this.#autohide_detect_container.width=containerSize;
-                this.#autohide_detect_container.height=Main.layoutManager.primaryMonitor.height-Main.panel.height;
-                break;
-        }
-    }
-
-
-    #isContainerCoveredByActiveWindow() {
-        if (!this.#scrollContainer) {return false;}
-
-        let activeWin = global.display.get_focus_window();
-        if (!activeWin) {
-            console.log('no active window');
-            return false;
-        }
-
-        let [x, y] = this.#scrollContainer.get_transformed_position();
-        let containerRect = {
-            x1: x,
-            y1: y,
-            x2: x + this.#scrollContainer.width,
-            y2: y + this.#scrollContainer.height,
-        };
-        let windowRectRaw = activeWin.get_frame_rect();
-        let windowRect = {
-            x1: windowRectRaw.x,
-            y1: windowRectRaw.y,
-            x2: windowRectRaw.x + windowRectRaw.width,
-            y2: windowRectRaw.y + windowRectRaw.height,
-        };
-
-        return !(
-            containerRect.x2 < windowRect.x1 ||
-            containerRect.x1 > windowRect.x2 ||
-            containerRect.y2 < windowRect.y1 ||
-            containerRect.y1 > windowRect.y2
-        );
-
-    }
-
-//---------------------------------------------------------------------------------------------------------------------
-//-----------------------------------------Rest------------------------------------------------------------------------
-//---------------------------------------------------------------------------------------------------------------------
+    //---------------------------------------------------------------------------------------------------------------------
+    //-----------------------------------------rest------------------------------------------------------------------------
+    //---------------------------------------------------------------------------------------------------------------------
 
     //not triggering warnings anymore, but still not working for touch
     #scrollPiping(actor, event){
@@ -541,6 +430,8 @@ export class DisplayManager{
     }
 
     //this is the only one using coreLogic vars!?
+    //pro corelogic: can make windowWorkspaces&windowButtons private in coreLogic. Clean.
+    //contra corelogic: visibility belongs here, AND coreLogic doesnt need Settingsconnector until now.
     setWorkspaceButtonVisibility(){
         if (this.#settingsConnector.settings.get_boolean('per-workspace-buttons')){
             let currentWorkspaceNr=global.workspace_manager.get_active_workspace().index();
@@ -602,7 +493,7 @@ export class DisplayManager{
         }
     }
 
-    #disconnectAutohideSignals(){
+    disconnectAutohideSignals(){
         if (this.#autohide_leaveSignal) {
             this.#scrollContainer.disconnect(this.#autohide_leaveSignal);
             this.#autohide_leaveSignal = 0;
@@ -614,7 +505,7 @@ export class DisplayManager{
         }
     }
 
-    #disconnectWindowDragAndRezizeSignals(){
+    disconnectWindowDragAndRezizeSignals(){
         const win = this.#oldFocusWindow;
         if (win) {
             if (this.#resizeSignal) {

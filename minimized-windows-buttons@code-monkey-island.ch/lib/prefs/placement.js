@@ -4,12 +4,17 @@ import Gio from 'gi://Gio';
 
 import { gettext as _ } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
+import UIElementAdder from './UIElementAdder.js';
+
 export default class PlacementPage{
 
 	#settings=null;
 	page=null;
 
 	constructor(_settings){
+
+        let uiElementAdder=new UIElementAdder(_settings);
+
 		this.#settings=_settings;
 
 		this.page = new Adw.PreferencesPage({
@@ -22,7 +27,8 @@ export default class PlacementPage{
         });
         this.page.add(group); 
 
-        //position: top or bottom for now
+
+        //----------------------------------position: top, bottom, left and right-------------------------------------
         const combo = new Adw.ComboRow({
             title: 'Position',
             subtitle: 'Buttons appear at the top, bottom, left or right screen edge?'
@@ -42,124 +48,32 @@ export default class PlacementPage{
         this.#settings.bind('position-on-screen', combo, 'active', Gio.SettingsBindFlags.DEFAULT);
 
 
+        //------------------------------sliders for horizontal/vertical and button margins----------------------------
+        uiElementAdder.addIntSlider(group, 
+                                    0, 
+                                    100, 
+                                    1, 
+                                    1, 
+                                    'Button container: vertical margin', 
+                                    'Vertical spacing between buttoncontainer and screen edge', 
+                                    'margin-vertical');
 
-        //vertical margins
-        const row1 = new Adw.ActionRow({
-            title: 'Button container: vertical margin',
-            subtitle: 'Vertical spacing between buttoncontainer and screen edge',
-        });
+        uiElementAdder.addIntSlider(group, 
+                                    0, 
+                                    100, 
+                                    1, 
+                                    1, 
+                                    'Button container: horizontal margin', 
+                                    'Horizontal spacing between buttoncontainer and screen edge', 
+                                    'margin-horizontal');
 
-        const adjustment1 = new Gtk.Adjustment({
-            lower: 0,
-            upper: 100,
-            step_increment: 1,
-            page_increment: 1,
-            value: this.#settings.get_int('margin-vertical')
-        });
-
-        const slider1 = new Gtk.Scale({
-            orientation: Gtk.Orientation.HORIZONTAL,
-            adjustment: adjustment1,
-            digits: 0,
-            draw_value: true,
-            hexpand: false,
-            valign: Gtk.Align.CENTER,
-            width_request: 200
-        });
-
-        slider1.connect('value-changed', () => {
-            this.#settings.set_int('margin-vertical', Math.round(slider1.get_value()));
-        });
-
-        // Keep slider synced if settings change elsewhere
-        this.#settings.connect('changed::margin-vertical', () => {
-            slider1.set_value(this.#settings.get_int('margin-vertical'));
-        });
-
-        row1.add_suffix(slider1);
-        row1.activatable_widget = slider1;
-
-        group.add(row1);
-
-
-
-
-
-        //horizontal margins
-        const row2 = new Adw.ActionRow({
-            title: 'Button container: horizontal margin',
-            subtitle: 'Horizontal spacing between buttoncontainer and screen edge',
-        });
-
-        const adjustment2 = new Gtk.Adjustment({
-            lower: 0,
-            upper: 100,
-            step_increment: 1,
-            page_increment: 1,
-            value: this.#settings.get_int('margin-horizontal'),
-        });
-
-        const slider2 = new Gtk.Scale({
-            orientation: Gtk.Orientation.HORIZONTAL,
-            adjustment: adjustment2,
-            digits: 0,
-            draw_value: true,
-            hexpand: false,
-            valign: Gtk.Align.CENTER,
-            width_request: 200
-        });
-
-        slider2.connect('value-changed', () => {
-            this.#settings.set_int('margin-horizontal', Math.round(slider2.get_value()));
-        });
-
-        // Keep slider synced if settings change elsewhere
-        this.#settings.connect('changed::margin-horizontal', () => {
-            slider2.set_value(this.#settings.get_int('margin-horizontal'));
-        });
-
-        row2.add_suffix(slider2);
-        row2.activatable_widget = slider2;
-
-        group.add(row2);
-
-
-        //button margins
-        const row3 = new Adw.ActionRow({
-            title: 'Button margins',
-            subtitle: 'margin between buttons. Vertical for position: left and right, horizontal for top and bottom',
-        });
-
-        const adjustment3 = new Gtk.Adjustment({
-            lower: 0,
-            upper: 20,
-            step_increment: 1,
-            page_increment: 1,
-            value: this.#settings.get_int('margin-buttons'),
-        });
-
-        const slider3 = new Gtk.Scale({
-            orientation: Gtk.Orientation.HORIZONTAL,
-            adjustment: adjustment3,
-            digits: 0,
-            draw_value: true,
-            hexpand: false,
-            valign: Gtk.Align.CENTER,
-            width_request: 200
-        });
-
-        slider3.connect('value-changed', () => {
-            this.#settings.set_int('margin-buttons', Math.round(slider3.get_value()));
-        });
-
-        // Keep slider synced if settings change elsewhere
-        this.#settings.connect('changed::margin-buttons', () => {
-            slider3.set_value(this.#settings.get_int('margin-buttons'));
-        });
-
-        row3.add_suffix(slider3);
-        row3.activatable_widget = slider3;
-
-        group.add(row3);
+        uiElementAdder.addIntSlider(group, 
+                                    0, 
+                                    20, 
+                                    1, 
+                                    1, 
+                                    'Button margins', 
+                                    'margin between buttons. Vertical for position: left and right, horizontal for top and bottom', 
+                                    'margin-buttons');
     }
 }
