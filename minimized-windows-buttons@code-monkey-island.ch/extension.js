@@ -11,7 +11,8 @@ export default class MinimizedButtonsExtension extends Extension {
     #coreLogic=null;
     #displayManager=null;
     #settingsConnector=null;
-    #buttonFactory=null;
+
+    #buttonFactory=null;//helper
 
     enable(){
         this.#buttonFactory=new ButtonFactory();
@@ -30,7 +31,7 @@ export default class MinimizedButtonsExtension extends Extension {
         this.#settingsConnector.connect();
 
         this.#buttonFactory.setSettingsConnector(this.#settingsConnector);
-        this.#buttonFactory.init();
+        this.#buttonFactory.init(); //nor really a init, more like "reset to new settings"
         
         this.#coreLogic.init(); //initialises displayManager during init
     }

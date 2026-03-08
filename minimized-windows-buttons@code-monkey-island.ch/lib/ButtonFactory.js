@@ -110,6 +110,42 @@ export class ButtonFactory{
 
         return button;
 	} 
+
+    makePlaceholderButton(){
+        let gicon = new Gio.ThemedIcon({ name: 'application-x-executable' });
+        let icon = new St.Icon({ gicon, style_class: 'button-icon' });
+
+        let label = new St.Label({
+            style_class: 'minimized-button-label',
+            text: 'bla',
+            y_align: Clutter.ActorAlign.CENTER,
+            x_expand: true
+        });
+
+        let content = new St.BoxLayout({
+            style_class: 'minimized-button-content',
+            vertical: false,
+            x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER
+        });
+        content.add_child(icon);
+        content.add_child(label);
+
+        const button=new St.Button({
+            style_class: 'minimized-button',
+            child: content,
+            x_expand: false,
+            y_expand:false,
+            y_align: Clutter.ActorAlign.START,
+            x_align: Clutter.ActorAlign.START
+        });
+
+        this.styleButton(button);
+
+        button.set_opacity(0);
+
+        return button;
+    } 
  
     styleButton(btn){
         let styleString='';
@@ -125,7 +161,6 @@ export class ButtonFactory{
                         'font-weight: '+this.#font_weight);
 
         styleString = styleString+ 'background-color: rgba('+this.#bg_color_r+','+this.#bg_color_g+','+this.#bg_color_b+','+this.#bg_color_a+'); ';
-
         styleString = styleString+ 'border-color: rgba('+this.#border_color_r+','+this.#border_color_g+','+this.#border_color_b+','+this.#border_color_a+'); ';
         styleString = styleString+ 'border-width: 1px; ';
         styleString = styleString+ 'border-radius: '+this.#border_radius+'px; ';

@@ -15,17 +15,18 @@
  */
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import GLib from 'gi://GLib';
 
 
 export default class DisplayManager_AutohideHelper{
 
 	constructor(){
-		//do nothing, pass down everything needed in function call
+		//do nothing, pass down everything needed in function calls
 	}
 
 	updateVisibilityActiveWindow(_scrollContainer, _autohide_active, _autohide_always) {
 
-        if (!_scrollContainer){return;};
+        if (!_scrollContainer || !_scrollContainer.get_parent()){return;};
 
         if (_autohide_active){
             if (_autohide_always){
@@ -43,7 +44,7 @@ export default class DisplayManager_AutohideHelper{
     }
 
     #isContainerCoveredByActiveWindow(_scrollContainer) {
-        if (!_scrollContainer) {return false;}
+        if (!_scrollContainer || !_scrollContainer.get_parent()) {return false;}
 
         let activeWin = global.display.get_focus_window();
         if (!activeWin) {
@@ -76,7 +77,7 @@ export default class DisplayManager_AutohideHelper{
     }
 
     setAutohideDefaultSize(_settings, _autohideDetectContainer){
-        let containerSize=_settings.get_int('autohide-container-size');//5;
+        let containerSize=_settings.get_int('autohide-container-size');
         switch (_settings.get_string('position-on-screen')){
             case 'top':
                 _autohideDetectContainer.set_position(0, Main.panel.height);
@@ -103,11 +104,17 @@ export default class DisplayManager_AutohideHelper{
 
     focusWindowChange(_displayManager, _autohideActive, _oldFocusWindow){
         if (_autohideActive){
+            //the newly focussed window
             let win = global.display.get_focus_window();
             if (!win) {
                 console.log('no window');
                 return false;
             }
+/*not working
+            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
+                _displayManager.setWindowAnimationPositionOpen(win);
+            });
+*/
             _displayManager.disconnectWindowDragAndRezizeSignals();
 
             _displayManager.setResizeSignal(
@@ -182,6 +189,7 @@ export default class DisplayManager_AutohideHelper{
         }else{
             _autohide_detect_container.hide();
         }
+
         _autohide_detect_container.queue_relayout();
     }
 

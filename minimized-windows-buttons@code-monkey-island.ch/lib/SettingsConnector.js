@@ -1,5 +1,8 @@
 /**
  * self-explanatory, needs no imports
+ * just 2 real functions: connect&disconnect
+ * 
+ * need to cut down the number of button-style vars
  * 
  * talks only to DisplayManager and ButtonFactory
  */
@@ -92,86 +95,86 @@ export class SettingsConnector{
 
         this.#buttonHeightSignal=this.settings.connect('changed::button-height', () => {
             this.#buttonFactory.init();
-            this.#displayManager.setPosition();
+            this.#displayManager.resetAllButtonStyles();
             this.#displayManager.setScrollcontainerReactivity();
         });
 
         this.#buttonWidthSignal=this.settings.connect('changed::button-width', () => {
             this.#buttonFactory.init();
-            this.#displayManager.setPosition();
+            this.#displayManager.resetAllButtonStyles();
             this.#displayManager.setScrollcontainerReactivity();
         });
 
         this.#buttonWidthSignal=this.settings.connect('changed::icon-height', () => {
             this.#buttonFactory.init();
-            this.#displayManager.setPosition();
+            this.#displayManager.resetAllButtonStyles();
         });
 
         this.#buttonWidthSignal=this.settings.connect('changed::line-height', () => {
             this.#buttonFactory.init();
-            this.#displayManager.setPosition();
+            this.#displayManager.resetAllButtonStyles();
         });
 
 
         this.#text_color_r_Signal=this.settings.connect('changed::text-color-r', () => {
             this.#buttonFactory.init();
-            this.#displayManager.setPosition();
+            this.#displayManager.resetAllButtonStyles();
         });
         this.#text_color_g_Signal=this.settings.connect('changed::text-color-g', () => {
             this.#buttonFactory.init();
-            this.#displayManager.setPosition();
+            this.#displayManager.resetAllButtonStyles();
         });
         this.#text_color_b_Signal=this.settings.connect('changed::text-color-b', () => {
             this.#buttonFactory.init();
-            this.#displayManager.setPosition();
+            this.#displayManager.resetAllButtonStyles();
         });
         this.#text_color_a_Signal=this.settings.connect('changed::text-color-a', () => {
             this.#buttonFactory.init();
-            this.#displayManager.setPosition();
+            this.#displayManager.resetAllButtonStyles();
         });
 
         this.#bg_color_r_Signal=this.settings.connect('changed::bg-color-r', () => {
             this.#buttonFactory.init();
-            this.#displayManager.setPosition();
+            this.#displayManager.resetAllButtonStyles();
         });
         this.#bg_color_g_Signal=this.settings.connect('changed::bg-color-g', () => {
             this.#buttonFactory.init();
-            this.#displayManager.setPosition();
+            this.#displayManager.resetAllButtonStyles();
         });
         this.#bg_color_b_Signal=this.settings.connect('changed::bg-color-b', () => {
             this.#buttonFactory.init();
-            this.#displayManager.setPosition();
+           this.#displayManager.resetAllButtonStyles();
         });
         this.#bg_color_a_Signal=this.settings.connect('changed::bg-color-a', () => {
             this.#buttonFactory.init();
-            this.#displayManager.setPosition();
+            this.#displayManager.resetAllButtonStyles();
         });
 
         this.#border_color_r_Signal=this.settings.connect('changed::border-color-r', () => {
             this.#buttonFactory.init();
-            this.#displayManager.setPosition();
+            this.#displayManager.resetAllButtonStyles();
         });
         this.#border_color_g_Signal=this.settings.connect('changed::border-color-g', () => {
             this.#buttonFactory.init();
-            this.#displayManager.setPosition();
+            this.#displayManager.resetAllButtonStyles();
         });
         this.#border_color_b_Signal=this.settings.connect('changed::border-color-b', () => {
             this.#buttonFactory.init();
-            this.#displayManager.setPosition();
+            this.#displayManager.resetAllButtonStyles();
         });
         this.#border_color_a_Signal=this.settings.connect('changed::border-color-a', () => {
             this.#buttonFactory.init();
-            this.#displayManager.setPosition();
+            this.#displayManager.resetAllButtonStyles();
         });
 
         this.#border_radius_Signal=this.settings.connect('changed::border-radius', () => {
             this.#buttonFactory.init();
-            this.#displayManager.setPosition();
+            this.#displayManager.resetAllButtonStyles();
         });
 
         this.#font_weight_Signal=this.settings.connect('changed::font-weight', () => {
             this.#buttonFactory.init();
-            this.#displayManager.setPosition();
+            this.#displayManager.resetAllButtonStyles();
         });
 
         this.#leave_space_margin_Signal=this.settings.connect('changed::leave-space-margin', () => {

@@ -67,7 +67,7 @@ export default class CoverOptionsPage{
                                     50, 
                                     1, 
                                     1, 
-                                    '<b>autohide/autohide always:</b> detect container size', 
+                                    'autohide/autohide always: detect container size', 
                                     'how close to the edge you have to put the cursor in order to show the buttons when auto-hidden.', 
                                     'autohide-container-size');
         uiElementAdder.addIntSlider(group1, 
@@ -75,7 +75,7 @@ export default class CoverOptionsPage{
                                     50, 
                                     1, 
                                     1, 
-                                    '<b>leave space:</b> margin', 
+                                    'Leave space: margin', 
                                     'spacing between the edge of maximized windows and the buttons', 
                                     'leave-space-margin');
 	}
