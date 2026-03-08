@@ -36,35 +36,35 @@ export class ButtonFactory{
     #border_radius=0;
     #font_weight=0;
 
-	#settingsConnector=null;
+	settings=null;
 
-	setSettingsConnector(_settingsConnector){
-		this.#settingsConnector=_settingsConnector;
-	}
+	constructor(_settings){
+        this.settings=_settings;
+    }
 
     init(){
-        this.#buttonWidth=this.#settingsConnector.settings.get_int('button-width');
-        this.#buttonHeight=this.#settingsConnector.settings.get_int('button-height');
-        this.#iconHeight=this.#settingsConnector.settings.get_int('icon-height');
-        this.#lineHeight=this.#settingsConnector.settings.get_int('line-height');
+        this.#buttonWidth=this.settings.get_int('button-width');
+        this.#buttonHeight=this.settings.get_int('button-height');
+        this.#iconHeight=this.settings.get_int('icon-height');
+        this.#lineHeight=this.settings.get_int('line-height');
 
-        this.#text_color_r=this.#settingsConnector.settings.get_int('text-color-r');
-        this.#text_color_g=this.#settingsConnector.settings.get_int('text-color-g');
-        this.#text_color_b=this.#settingsConnector.settings.get_int('text-color-b');
-        this.#text_color_a=this.#settingsConnector.settings.get_double('text-color-a');
+        this.#text_color_r=this.settings.get_int('text-color-r');
+        this.#text_color_g=this.settings.get_int('text-color-g');
+        this.#text_color_b=this.settings.get_int('text-color-b');
+        this.#text_color_a=this.settings.get_double('text-color-a');
 
-        this.#bg_color_r=this.#settingsConnector.settings.get_int('bg-color-r');
-        this.#bg_color_g=this.#settingsConnector.settings.get_int('bg-color-g');
-        this.#bg_color_b=this.#settingsConnector.settings.get_int('bg-color-b');
-        this.#bg_color_a=this.#settingsConnector.settings.get_double('bg-color-a');
+        this.#bg_color_r=this.settings.get_int('bg-color-r');
+        this.#bg_color_g=this.settings.get_int('bg-color-g');
+        this.#bg_color_b=this.settings.get_int('bg-color-b');
+        this.#bg_color_a=this.settings.get_double('bg-color-a');
 
-        this.#border_color_r=this.#settingsConnector.settings.get_int('border-color-r');
-        this.#border_color_g=this.#settingsConnector.settings.get_int('border-color-g');
-        this.#border_color_b=this.#settingsConnector.settings.get_int('border-color-b');
-        this.#border_color_a=this.#settingsConnector.settings.get_double('border-color-a');
+        this.#border_color_r=this.settings.get_int('border-color-r');
+        this.#border_color_g=this.settings.get_int('border-color-g');
+        this.#border_color_b=this.settings.get_int('border-color-b');
+        this.#border_color_a=this.settings.get_double('border-color-a');
 
-        this.#border_radius=this.#settingsConnector.settings.get_int('border-radius');
-        this.#font_weight=this.#settingsConnector.settings.get_int('font-weight');
+        this.#border_radius=this.settings.get_int('border-radius');
+        this.#font_weight=this.settings.get_int('font-weight');
         this.#font_weight=Math.round(this.#font_weight / 100) * 100;
 
     }
@@ -165,9 +165,9 @@ export class ButtonFactory{
         styleString = styleString+ 'border-width: 1px; ';
         styleString = styleString+ 'border-radius: '+this.#border_radius+'px; ';
 
-        let buttonMargin=this.#settingsConnector.settings.get_int('margin-buttons');
-        if (this.#settingsConnector.settings.get_string('position-on-screen') == 'top' ||
-            this.#settingsConnector.settings.get_string('position-on-screen') == 'bottom'){
+        let buttonMargin=this.settings.get_int('margin-buttons');
+        if (this.settings.get_string('position-on-screen') == 'top' ||
+            this.settings.get_string('position-on-screen') == 'bottom'){
             styleString=styleString+'margin-right: '+buttonMargin+'px; margin-bottom: 0px;';
         }else{
             styleString=styleString+'margin-bottom: '+buttonMargin+'px; margin-right: 0px;';

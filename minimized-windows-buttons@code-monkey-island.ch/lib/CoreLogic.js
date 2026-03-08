@@ -1,9 +1,9 @@
 /**
  * CoreLogic is for watching windows, getting ButtonFactory to make the Buttons 
- * and adding them to /removing them from the container
- * Placement, show/hide etc. is all done in DisplayManager
+ * and adding them to /removing them from the container + reordering/dnd-logic
  * 
- * this class talks only to DisplayManager and ButtonFactory
+ * Placement of the container, show/hide etc. is all done in DisplayManager
+ * 
  */
 
 import St from 'gi://St';
@@ -17,11 +17,16 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import * as DND from 'resource:///org/gnome/shell/ui/dnd.js';
 
-//not nulling this on disable! (module level const should be gc'd on disable)
+//not nulling this on disable. (module level const should be gc'd on disable)
 const Mtk = imports.gi.Mtk;
 
 
 export class CoreLogic{
+
+    #settings=null;
+    #buttonFactory=null;
+
+    #displayManager=null;
 	
 	/**
 	 * container containing buttons. DisplayManager places it into a scrollContainer.
@@ -30,7 +35,7 @@ export class CoreLogic{
 	 */
     container=null;
 
-    #windowSignals=null
+    #windowSignals=null;
  
     //need those in DisplayManager.setWorkspaceButtonVisibility
     _windowButtons=null; //{metawindow, button}
@@ -39,32 +44,30 @@ export class CoreLogic{
     #sessionSignal=0;
     #displaySignal=0;
 
-    #displayManager=null;
-    #buttonFactory=null;
-
-    //save button while dragging here, so displaymanager can access it.
-    draggedButton=null;
     #dragSuccess=false;
 
-	constructor(){
+    placeholderButton=null;
+
+	constructor(_settings, _buttonFactory){
 		this.#windowSignals=new Map();
         this._windowButtons=new Map();
         this._windowWorkspaces=new Map();
+        this.#settings=_settings;
+        this.#buttonFactory=_buttonFactory;
 	}
 
 	setDisplayManager(_displayManager){
 		this.#displayManager=_displayManager;
 	}
 
-    setButtonFactory(_buttonFactory){
-        this.#buttonFactory=_buttonFactory;
-    }
-
 	init(){
 
         this.#setupButtonContainer();
 
         this.#displayManager.init();
+
+        //was in DM init, do i need it?
+        this.#resetPlaceholder();
 
         this.#sessionSignal = Main.sessionMode.connect('updated', () => {
             for (const actor of global.get_window_actors()){
@@ -81,10 +84,10 @@ export class CoreLogic{
         for (const actor of global.get_window_actors()){
             this.#watchWindow(actor.meta_window);
         }
-
 	}
 
 	close(){
+        this.#clearPlaceholder();
 
         if (this.#sessionSignal) {
             Main.sessionMode.disconnect(this.#sessionSignal);
@@ -106,18 +109,21 @@ export class CoreLogic{
         this._windowWorkspaces.clear();
 
         for (const btn of this._windowButtons.values()) {
-            this.container.remove_child(btn);
-            btn.destroy();
+            if (this.container && btn.get_parent() === this.container) {
+                this.container.remove_child(btn);
+            }
+            if (btn){
+                btn._draggable=null;
+                btn.destroy();
+            }
         }
         this._windowButtons.clear();
 
         if (this.container) {
+            this.container._delegate = null;
             this.container.destroy();
             this.container = null;
-        }
-
-        this.draggedButton=null;
-        
+        } 
 	}
 
 
@@ -169,7 +175,7 @@ export class CoreLogic{
 
         this.#setupButton(btn, metaWindow);
 
-        this.putButtonInPlace(btn);
+        this.#putButtonInPlace(btn);
 
         this._windowButtons.set(metaWindow, btn);
 
@@ -185,9 +191,9 @@ export class CoreLogic{
         });
     }
 
-    putButtonInPlace(btn){
-        let placeholderIndex=this.#displayManager.getPlaceholderIndex();
-        if (placeholderIndex==-1){console.log('WARNING: calling putButtonInPlace with placeholderIndex=-1!');}
+    #putButtonInPlace(btn){
+        let placeholderIndex=this.#getPlaceholderIndex();
+        if (placeholderIndex==-1){console.log('Minimized Windows Buttons WARNING: calling putButtonInPlace with placeholderIndex=-1!');}
         if (btn.get_parent()!==this.container){
             if (btn.get_parent()!==null){
                 btn.get_parent().remove_child(btn);
@@ -195,7 +201,7 @@ export class CoreLogic{
             this.container.add_child(btn);
         }
         this.container.set_child_at_index(btn, placeholderIndex); //removes placeholderButton
-        this.#displayManager.resetPlaceholder();
+        this.#resetPlaceholder();
 
     }
 
@@ -211,7 +217,7 @@ export class CoreLogic{
             this._windowButtons.delete(metaWindow);
             btn.destroy();
         }
-        this.#displayManager.resetPlaceholder();
+        this.#resetPlaceholder();
 
         //setting on old size?
         this.#displayManager.setScrollcontainerReactivity();
@@ -223,7 +229,10 @@ export class CoreLogic{
             this.#displayManager.resetAllButtonwindowIconPositions();
         });
     }
-
+    
+    //-------------------------------------------------------------------------------------------------------------------------------------
+    //-------------------------------------------container and button hooks: dnd and click logic-------------------------------------------
+    //-------------------------------------------------------------------------------------------------------------------------------------
     #setupButtonContainer(){
         this.container = new St.BoxLayout();
 
@@ -240,20 +249,14 @@ export class CoreLogic{
             },
             acceptDrop: (source, actor, x, y, time) => {
                 this.#dragSuccess=true;
-                this.#displayManager.reorderButtons(actor, x, y);
+                this.reorderButtons(actor, x, y);
                 this.#displayManager.resetAllButtonStyles();
                 this.#displayManager.resetAllButtonwindowIconPositions();
                 this.#displayManager.resetAllOpenWindowIconPositions();
-                this.draggedButton=null;
 
                 return true;
             }
         };
-    }
-
-    //meh, better place it here
-    reorderButtons(btn, x, y){
-        this.#displayManager.reorderButtons(btn, x, y);
     }
 
     #setupButton(btn, metaWindow){
@@ -272,14 +275,13 @@ export class CoreLogic{
 
         btn._draggable.connect('drag-begin', () => {
             this.#dragSuccess=false;
-            this.draggedButton=btn;
         });
 
 
-        const _originalUpdate = btn._draggable._updateDragPosition; //do i really need this?
-        //important, use (event)=>{} function define structure to have this
+        const _originalUpdate = btn._draggable._updateDragPosition;
+        //important, use (event)=>{} function-define-structure to have this
         btn._draggable._updateDragPosition = (event) => {
-            _originalUpdate.call(btn._draggable, event);
+            _originalUpdate.call(btn._draggable, event);//still need this?
             let [x, y] = event.get_coords();
             this.reorderButtons(null, x, y);
         };
@@ -289,6 +291,9 @@ export class CoreLogic{
          * here case drop on !buttoncontainer gets handled. drop on buttoncontainer
          * gets handled in container-hook
          */
+
+        //here check if snapback, else do it like this.
+
         btn._draggable.connect('drag-end', (draggable) => {
             if (!this.#dragSuccess) {
                 if (metaWindow) {
@@ -322,6 +327,120 @@ export class CoreLogic{
             }
         });
 
+    }
+
+    //-------------------------------------------------------------------------------------------------------------------------------------
+    //-------------------------------------------Placeholderbutton & reordering stuff------------------------------------------------------
+    //-------------------------------------------------------------------------------------------------------------------------------------
+
+    //only one that needs settings?
+    reorderButtons(btn, dropX, dropY) {
+        const container = this.container;
+
+        //NEED SETTINGS HERE! have ishorizontal in displaymanager, public and hooked to position on screen
+        const isHorizontal = ['top', 'bottom'].includes(this.#settings.get_string('position-on-screen'));
+
+        //which button is hovered over
+        const children = container.get_children();
+        let hoveredBtn = null;
+        let hoveredIndex = -1;
+
+        //2. if outside container and openAtDropoutside -> hoveredIndex=-1, break.
+
+        // else go into loop, no need to separate cases if done well
+        //2. if over container, return position or end of list -> getAppropriatePositon()
+        //3. else if outside container and not openAt..(snapback) -> get appropriate position (setting real button done on drop !success)
+        //appropriateposition returns position according to appropriate x or y vals.
+
+        for (let i = 0; i < children.length; i++) {
+            const child = children[i];
+            const [cx, cy] = child.get_transformed_position();
+
+            //1. if over container, return position or end of list -> getAppropriatePositon()
+            //2. else if outside container and openAtDropoutside -> hoveredIndex=-1, break.
+            //3. else if outside container and not openAt..(snapback) -> get appropriate position
+            //appropriateposition returns position according to appropriate x or y vals.
+
+/*
+            if (this.#dragIsOverContainer(dropX,dropY) 
+                || this.#displayManager.openAtDropOutside ){
+
+                 //not checking in the margins here!
+                if (dropX >= cx && dropX <= cx + child.width &&
+                    dropY >= cy && dropY <= cy + child.height) {
+                    hoveredBtn = child;
+                    hoveredIndex = i;
+                    break;
+                }
+
+            }else{//snapback:leave a gap in the appropriate spot
+
+            }
+        */    
+            //not checking in the margins here!
+            if (dropX >= cx && dropX <= cx + child.width &&
+                dropY >= cy && dropY <= cy + child.height) {
+                hoveredBtn = child;
+                hoveredIndex = i;
+                break;
+            }
+        }
+
+        //what to do if not on a button
+        if (hoveredIndex==-1){ //after last button
+            hoveredIndex=children.length;
+        }
+
+
+        if (btn === null) { //its the placeholder (we are during drag)
+            if (!this.placeholderButton) {
+                this.placeholderButton = this.#buttonFactory.makePlaceholderButton();
+            }
+
+            // If hovering over placeholder or nothing new, do nothing
+            //if (!hoveredBtn || hoveredBtn === this.placeholderButton) {return;}
+            if (hoveredBtn === this.placeholderButton) {return;}
+
+
+
+            // Move placeholder to the new hovered position
+            if (this.placeholderButton.get_parent()) {
+                container.remove_child(this.placeholderButton);
+            }
+            container.add_child(this.placeholderButton);
+            container.set_child_at_index(this.placeholderButton, hoveredIndex);
+
+        }else{ //not the placeholder, but the real button, dropped into container
+
+            //if snapback
+            this.#putButtonInPlace(btn);
+            this.#displayManager.resetAllButtonwindowIconPositions();
+        }
+    }
+
+    #getPlaceholderIndex(){
+        return this.container.get_children().indexOf(this.placeholderButton);
+    }
+
+    #resetPlaceholder(){
+        if (this.placeholderButton==null){
+            console.log('Minimized Windows Buttons WARNING: placeholderButton=null, this is ok only on init!');
+            this.placeholderButton=this.#buttonFactory.makePlaceholderButton();
+        }
+        if (this.placeholderButton.get_parent()){this.placeholderButton.get_parent().remove_child(this.placeholderButton);}
+        this.container.add_child(this.placeholderButton);
+
+    }
+
+    #clearPlaceholder() {
+        if (this.placeholderButton) {
+            const container = this.container;
+            if (this.placeholderButton.get_parent() === container) {
+                container.remove_child(this.placeholderButton);
+            }
+            this.placeholderButton.destroy();
+            this.placeholderButton = null;
+        }
     }
 
 }

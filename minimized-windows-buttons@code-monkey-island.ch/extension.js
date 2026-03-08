@@ -8,46 +8,42 @@ import {ButtonFactory} from './lib/ButtonFactory.js';
 
 export default class MinimizedButtonsExtension extends Extension {
 
+    #settings=null;
+    #buttonFactory=null;//helper
+
     #coreLogic=null;
     #displayManager=null;
     #settingsConnector=null;
 
-    #buttonFactory=null;//helper
-
     enable(){
-        this.#buttonFactory=new ButtonFactory();
-
-        this.#coreLogic= new CoreLogic();
-        this.#settingsConnector= new SettingsConnector(this.getSettings());
-        this.#displayManager = new DisplayManager(this.#coreLogic, this.#settingsConnector);
+        this.#settings=this.getSettings();
+        this.#buttonFactory=new ButtonFactory(this.#settings);
+        
+        this.#coreLogic= new CoreLogic(this.#settings, this.#buttonFactory);
+        this.#settingsConnector= new SettingsConnector(this.#settings, this.#buttonFactory);
+        this.#displayManager = new DisplayManager(this.#settings, this.#buttonFactory, this.#coreLogic);
 
         this.#coreLogic.setDisplayManager(this.#displayManager);
         this.#settingsConnector.setDisplayManager(this.#displayManager);
 
-        this.#coreLogic.setButtonFactory(this.#buttonFactory);
-        this.#displayManager.setButtonFactory(this.#buttonFactory);
-        this.#settingsConnector.setButtonFactory(this.#buttonFactory);
-
         this.#settingsConnector.connect();
-
-        this.#buttonFactory.setSettingsConnector(this.#settingsConnector);
-        this.#buttonFactory.init(); //nor really a init, more like "reset to new settings"
-        
+        this.#buttonFactory.init(); //not really a init, more like "reset to new settings"
         this.#coreLogic.init(); //initialises displayManager during init
     }
 
-
     disable(){
-        this.#settingsConnector.disconnect();
-        this.#settingsConnector=null;
-
         this.#coreLogic.close();
         this.#coreLogic=null;
-        
+
         this.#displayManager.close();
         this.#displayManager=null;
 
         this.#buttonFactory=null; //needs no close()
+
+        this.#settingsConnector.disconnect();
+        this.#settingsConnector=null;
+
+        this.#settings=null;
     }
 
 } //MinimizedButtonsExtension extends Extension

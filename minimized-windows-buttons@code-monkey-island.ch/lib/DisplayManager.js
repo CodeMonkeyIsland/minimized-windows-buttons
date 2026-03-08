@@ -3,8 +3,6 @@
  * this is the big boy. 
  * autohide outsourced to DisplayManager_AutohideHelper.
  * Still too large.
- * 
- * this class talks with ButtonFactory, SettingsConnector and CoreLogic
  */
 
 import St from 'gi://St';
@@ -19,10 +17,9 @@ const Mtk = imports.gi.Mtk;
 
 export class DisplayManager{
 
-    #coreLogic=null;
-    #settingsConnector=null;
+    #settings=null;
     #buttonFactory=null;
-
+    #coreLogic=null;
     #autohideHelper=null;
 
     #workspaceSignal=0;
@@ -39,27 +36,23 @@ export class DisplayManager{
     #scrollContainer=null;
     #autohide_detect_container=null;
     #oldFocusWindow=null;
+    #leaveSpaceContainer=null;
 
+    //save some settings-dependent values for easier access
     #useScrollPiping=false;
     #autohideActive=false;
     #autohide_always=false;
 
-    #leaveSpaceContainer=null;
+    isHorizontal=false;
 
-    //need this for animations. belongs here
-    #placeholderButton = null;
 
-	constructor(_coreLogic, _settingsConnector){
+	constructor(_settings,  _buttonFactory, _coreLogic){
 		this.#coreLogic=_coreLogic;
-		this.#settingsConnector=_settingsConnector;
+		this.#settings=_settings;
+        this.#buttonFactory=_buttonFactory;
 	}
 
-    setButtonFactory(_buttonFactory){
-        this.#buttonFactory=_buttonFactory;
-    }
-
 	init(){
-
         this.#autohideHelper=new DisplayManager_AutohideHelper();
 
         this.#scrollContainer = new St.ScrollView({
@@ -110,15 +103,12 @@ export class DisplayManager{
         this.#overviewHideSignal=Main.overview.connect('hiding', () => this.setOverviewVisibility());
         this.setOverviewVisibility();
 
-        this.resetPlaceholder();
+        
 	}
 
 	close(){
-
         this.disconnectAutohideSignals();
         this.disconnectWindowDragAndRezizeSignals();
-
-        this.clearPlaceholder();
 
         if (this.#workspaceSignal) {
             global.workspace_manager.disconnect(this.#workspaceSignal);
@@ -154,7 +144,7 @@ export class DisplayManager{
 
         this.destroyLeaveSpaceContainer();
 
-        this.#settingsConnector=null;
+        this.#settings=null;
         this.#coreLogic=null;
 
         this.#autohideHelper=null;
@@ -166,9 +156,9 @@ export class DisplayManager{
     //---------------------------------------------------------------------------------------------------------------------
 
     setPosition(){
-        let position = this.#settingsConnector.settings.get_string('position-on-screen');
-        let verticalMargin=this.#settingsConnector.settings.get_int('margin-vertical');
-        let horizontalMargin=this.#settingsConnector.settings.get_int('margin-horizontal');
+        let position = this.#settings.get_string('position-on-screen');
+        let verticalMargin=this.#settings.get_int('margin-vertical');
+        let horizontalMargin=this.#settings.get_int('margin-horizontal');
 
         let scrollContainerHeight=0;
         let scrollContainerWidth=0;
@@ -181,43 +171,42 @@ export class DisplayManager{
 
         switch (position){
             case 'top':
-                this.#scrollContainer.set_layout_manager(new Clutter.BoxLayout({orientation: Clutter.Orientation.HORIZONTAL}));
-                this.#coreLogic.container.set_layout_manager(new Clutter.BoxLayout({ orientation: Clutter.Orientation.HORIZONTAL}));
+                this.isHorizontal=true;
                 xPos=0;
                 yPos=topPanel.height+verticalMargin;
-                this.#scrollContainer.set_style('padding: 0px '+horizontalMargin+'px 0px '+horizontalMargin+'px;');
-                this.#useScrollPiping=true;
                 break;
             case 'bottom':
-                this.#scrollContainer.set_layout_manager(new Clutter.BoxLayout({orientation: Clutter.Orientation.HORIZONTAL}));
-                this.#coreLogic.container.set_layout_manager(new Clutter.BoxLayout({ orientation: Clutter.Orientation.HORIZONTAL}));
+                this.isHorizontal=true;
                 xPos=0;
                 yPos=monitor.height - this.#buttonFactory.getButtonHeight() - verticalMargin;
-                this.#scrollContainer.set_style('padding: 0px '+horizontalMargin+'px 0px '+horizontalMargin+'px;');
-                this.#useScrollPiping=true;
                 break;
             case 'left':
-                this.#scrollContainer.set_layout_manager(new Clutter.BoxLayout({orientation: Clutter.Orientation.VERTICAL}));
-                this.#coreLogic.container.set_layout_manager(new Clutter.BoxLayout({ orientation: Clutter.Orientation.VERTICAL}));
+                this.isHorizontal=false;
                 xPos=horizontalMargin;
                 yPos=topPanel.height;
-                this.#scrollContainer.set_style('padding: '+verticalMargin+'px 0px '+verticalMargin+'px 0px;');
-                this.#useScrollPiping=false;
                 break;
             case 'right':
-                this.#scrollContainer.set_layout_manager(new Clutter.BoxLayout({orientation: Clutter.Orientation.VERTICAL}));
-                this.#coreLogic.container.set_layout_manager(new Clutter.BoxLayout({ orientation: Clutter.Orientation.VERTICAL}));
+                this.isHorizontal=false;
                 xPos=monitor.width-this.#buttonFactory.getButtonWidth()-horizontalMargin;
                 yPos=topPanel.height;
-                this.#scrollContainer.set_style('padding: '+verticalMargin+'px 0px '+verticalMargin+'px 0px;');
-                this.#useScrollPiping=false;
                 break;
         }
+
+        if (this.isHorizontal){
+            this.#scrollContainer.set_layout_manager(new Clutter.BoxLayout({orientation: Clutter.Orientation.HORIZONTAL}));
+            this.#coreLogic.container.set_layout_manager(new Clutter.BoxLayout({ orientation: Clutter.Orientation.HORIZONTAL}));
+            this.#useScrollPiping=true;
+            this.#scrollContainer.set_style('padding: 0px '+horizontalMargin+'px 0px '+horizontalMargin+'px;');
+        }else{
+            this.#scrollContainer.set_layout_manager(new Clutter.BoxLayout({orientation: Clutter.Orientation.VERTICAL}));
+            this.#coreLogic.container.set_layout_manager(new Clutter.BoxLayout({ orientation: Clutter.Orientation.VERTICAL}));
+            this.#useScrollPiping=false;
+            this.#scrollContainer.set_style('padding: '+verticalMargin+'px 0px '+verticalMargin+'px 0px;');
+        }
+
         this.#scrollContainer.set_policy(St.PolicyType.NEVER, St.PolicyType.NEVER); //just scrollbar, not ablility to scroll
         this.#scrollContainer.set_position(xPos, yPos);
 
-        //lets have some less efficient, but more readable code, have another switch(string) in there for each of those
-        //keep the switch section here as small as possible -> also put pos here
         this.#scrollContainer.width=this.#getScrollContainerWidth();
         this.#scrollContainer.height=this.#getScrollContainerHeight();
 
@@ -227,7 +216,7 @@ export class DisplayManager{
 
         this.setupAutohideDetector();
 
-        if(this.#settingsConnector.settings.get_string('cover-behaviour')=='leave space'){
+        if(this.#settings.get_string('cover-behaviour')=='leave space'){
             this.#setupLeaveSpaceContainer();
         }
 
@@ -243,7 +232,7 @@ export class DisplayManager{
 
         let affectInput=false; //set it to properly init?
 
-        switch (this.#settingsConnector.settings.get_string('cover-behaviour')){
+        switch (this.#settings.get_string('cover-behaviour')){
             case 'front':
                 affectInput=false;
                 this.#autohideActive=false;
@@ -290,39 +279,23 @@ export class DisplayManager{
 
 
     #getScrollContainerHeight(){
-        let position = this.#settingsConnector.settings.get_string('position-on-screen');
         let monitor=Main.layoutManager.primaryMonitor;
         let topPanel=Main.panel;
-
-        switch (position){
-            case 'top':
-                return this.#buttonFactory.getButtonHeight();
-            case 'bottom':
-                return this.#buttonFactory.getButtonHeight();
-            case 'left':
-                return monitor.height-topPanel.height;
-            case 'right':
-                return monitor.height-topPanel.height;
+        if (this.isHorizontal){
+            return this.#buttonFactory.getButtonHeight();
+        }else{
+            return monitor.height-topPanel.height;
         }
-        return null;
     }
 
     #getScrollContainerWidth(){
-        let position = this.#settingsConnector.settings.get_string('position-on-screen');
         let monitor=Main.layoutManager.primaryMonitor;
         let topPanel=Main.panel;
-
-        switch (position){
-            case 'top':
-                return monitor.width;
-            case 'bottom':
-                return monitor.width;
-            case 'left':
-                return this.#buttonFactory.getButtonWidth();
-            case 'right':
-                return this.#buttonFactory.getButtonWidth();
+        if (this.isHorizontal){
+            return monitor.width;
+        }else{
+            return this.#buttonFactory.getButtonWidth();
         }
-        return null;
     }
 
 
@@ -350,14 +323,14 @@ export class DisplayManager{
         const sc_height=this.#getScrollContainerHeight();
         const sc_width=this.#getScrollContainerWidth();
 
-        let verticalMargin=this.#settingsConnector.settings.get_int('margin-vertical');
-        let horizontalMargin=this.#settingsConnector.settings.get_int('margin-horizontal');
+        let verticalMargin=this.#settings.get_int('margin-vertical');
+        let horizontalMargin=this.#settings.get_int('margin-horizontal');
 
-        let position = this.#settingsConnector.settings.get_string('position-on-screen');
+        let position = this.#settings.get_string('position-on-screen');
         let monitor=Main.layoutManager.primaryMonitor;
         let topPanel=Main.panel;
 
-        let borderSpace=this.#settingsConnector.settings.get_int('leave-space-margin');
+        let borderSpace=this.#settings.get_int('leave-space-margin');
 
         switch (position){
             case 'top':
@@ -403,7 +376,7 @@ export class DisplayManager{
     }
 
     setAutohideDefaultSize(){
-        this.#autohideHelper.setAutohideDefaultSize(this.#settingsConnector.settings, this.#autohide_detect_container);
+        this.#autohideHelper.setAutohideDefaultSize(this.#settings, this.#autohide_detect_container);
     }
 
     focusWindowChange(){
@@ -418,7 +391,7 @@ export class DisplayManager{
 
     //this is a hover detect container. show buttons on hover! (wrong name)
     setupAutohideDetector(){
-        this.#autohideHelper.setupAutohideDetector(this, this.#scrollContainer, this.#autohide_detect_container, this.#autohideActive, this.#settingsConnector.settings);
+        this.#autohideHelper.setupAutohideDetector(this, this.#scrollContainer, this.#autohide_detect_container, this.#autohideActive, this.#settings);
     }
     set_Autohide_Show_Signal(_signal){
         this.#autohide_showSignal=_signal;
@@ -463,7 +436,7 @@ export class DisplayManager{
     }
 
     setOverviewVisibility(){
-        let showInOverview = this.#settingsConnector.settings.get_boolean('show-in-overview');
+        let showInOverview = this.#settings.get_boolean('show-in-overview');
         if (Main.overview.visible){
             this.#scrollContainer.visible = showInOverview;
         }else{
@@ -482,7 +455,7 @@ export class DisplayManager{
     //pro corelogic: can make windowWorkspaces&windowButtons private in coreLogic. Clean.
     //contra corelogic: visibility belongs here, AND coreLogic doesnt need Settingsconnector until now.
     setWorkspaceButtonVisibility(){
-        if (this.#settingsConnector.settings.get_boolean('per-workspace-buttons')){
+        if (this.#settings.get_boolean('per-workspace-buttons')){
             let currentWorkspaceNr=global.workspace_manager.get_active_workspace().index();
             for (let [metaWindow, btn] of this.#coreLogic._windowButtons) {
                 let windowWorkspaceNr = this.#coreLogic._windowWorkspaces.get(metaWindow);
@@ -506,8 +479,8 @@ export class DisplayManager{
         if (this.#autohideActive){
             this.#scrollContainer.reactive=true;
         }else{ //front and leave-space
-            if (this.#settingsConnector.settings.get_string('position-on-screen') == 'top' ||
-                this.#settingsConnector.settings.get_string('position-on-screen') == 'bottom'){
+            if (this.#settings.get_string('position-on-screen') == 'top' ||
+                this.#settings.get_string('position-on-screen') == 'bottom'){
                 if (this.#coreLogic.container.width > this.#scrollContainer.width){
                     this.#scrollContainer.reactive=true;
                 }else{
@@ -537,7 +510,7 @@ export class DisplayManager{
 
     resetAllButtonwindowIconPositions(){
         for (let [metaWindow, btn] of this.#coreLogic._windowButtons) {
-            if (btn!==this.#placeholderButton){
+            if (btn!==this.#coreLogic.placeholderButton){
                 this.updateIconGeometry(btn, metaWindow);
             }
         }
@@ -547,7 +520,7 @@ export class DisplayManager{
     //better do this with windowButtons?
     resetAllButtonStyles(){
         for (const child of this.#coreLogic.container.get_children()) {
-            if (child!==this.#placeholderButton){
+            if (child!==this.#coreLogic.placeholderButton){
                 this.#buttonFactory.styleButton(child);
             }
         }
@@ -562,7 +535,7 @@ export class DisplayManager{
 
     //open windows, set animation position to next free slot in contianer
     setWindowAnimationPositionOpen(metaWindow){
-        let btn=this.#placeholderButton;
+        let btn=this.#coreLogic.placeholderButton;
         btn.get_allocation_box(); 
         
         let [x, y] = btn.get_transformed_position();
@@ -579,70 +552,6 @@ export class DisplayManager{
             height: Math.floor(h),
         });
         metaWindow.set_icon_geometry(rect);
-    }
-
-    //another one, that is kind of inbetween, could also be in coreLogic
-    reorderButtons(btn, dropX, dropY) {
-        const container = this.#coreLogic.container;
-        const isHorizontal = ['top', 'bottom'].includes(this.#settingsConnector.settings.get_string('position-on-screen'));
-
-        //which button is hovered over
-        const children = container.get_children();
-        let hoveredBtn = null;
-        let hoveredIndex = -1;
-
-        for (let i = 0; i < children.length; i++) {
-            const child = children[i];
-            const [cx, cy] = child.get_transformed_position();
-            
-            //not checking in the margins here!
-            if (dropX >= cx && dropX <= cx + child.width &&
-                dropY >= cy && dropY <= cy + child.height) {
-                hoveredBtn = child;
-                hoveredIndex = i;
-                break;
-            }
-        }
-
-        //what to do if not on a button
-        if (hoveredIndex==-1){ //after last button
-            hoveredIndex=children.length;
-        }
-
-
-        if (btn === null) { //its the placeholder (we are during drag)
-            if (!this.#placeholderButton) {
-                this.#placeholderButton = this.#buttonFactory.makePlaceholderButton();
-            }
-
-            // If hovering over placeholder or nothing new, do nothing
-            if (!hoveredBtn || hoveredBtn === this.#placeholderButton) {return;}
-
-            // Move placeholder to the new hovered position
-            if (this.#placeholderButton.get_parent()) {
-                container.remove_child(this.#placeholderButton);
-            }
-            container.add_child(this.#placeholderButton);
-            container.set_child_at_index(this.#placeholderButton, hoveredIndex);
-
-        }else{ //not the placeholder, but the real button, dropped into container
-            this.#coreLogic.putButtonInPlace(btn);
-            this.resetAllButtonwindowIconPositions();
-        }
-    }
-
-    getPlaceholderIndex(){
-        return this.#coreLogic.container.get_children().indexOf(this.#placeholderButton);
-    }
-
-    resetPlaceholder(){
-        if (this.#placeholderButton==null){
-            console.log('WARNING: placeholderButton=null! ,ok on init');
-            this.#placeholderButton=this.#buttonFactory.makePlaceholderButton();
-        }
-        if (this.#placeholderButton.get_parent()){this.#placeholderButton.get_parent().remove_child(this.#placeholderButton);}
-        this.#coreLogic.container.add_child(this.#placeholderButton);
-
     }
 
 
@@ -690,17 +599,6 @@ export class DisplayManager{
             }
         }
         this.#oldFocusWindow=null; //dont destroy the window!
-    }
-
-    clearPlaceholder() {
-        if (this.#placeholderButton) {
-            const container = this.#coreLogic.container;
-            if (this.#placeholderButton.get_parent() === container) {
-                container.remove_child(this.#placeholderButton);
-            }
-            this.placeholderButton.destroy();
-            this.#placeholderButton = null;
-        }
     }
 
 }
