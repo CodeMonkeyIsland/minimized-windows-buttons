@@ -229,7 +229,7 @@ export class CoreLogic{
             this.#displayManager.resetAllButtonwindowIconPositions();
         });
     }
-    
+
     //-------------------------------------------------------------------------------------------------------------------------------------
     //-------------------------------------------container and button hooks: dnd and click logic-------------------------------------------
     //-------------------------------------------------------------------------------------------------------------------------------------
@@ -356,11 +356,6 @@ export class CoreLogic{
             const child = children[i];
             const [cx, cy] = child.get_transformed_position();
 
-            //1. if over container, return position or end of list -> getAppropriatePositon()
-            //2. else if outside container and openAtDropoutside -> hoveredIndex=-1, break.
-            //3. else if outside container and not openAt..(snapback) -> get appropriate position
-            //appropriateposition returns position according to appropriate x or y vals.
-
 /*
             if (this.#dragIsOverContainer(dropX,dropY) 
                 || this.#displayManager.openAtDropOutside ){
@@ -411,8 +406,6 @@ export class CoreLogic{
             container.set_child_at_index(this.placeholderButton, hoveredIndex);
 
         }else{ //not the placeholder, but the real button, dropped into container
-
-            //if snapback
             this.#putButtonInPlace(btn);
             this.#displayManager.resetAllButtonwindowIconPositions();
         }

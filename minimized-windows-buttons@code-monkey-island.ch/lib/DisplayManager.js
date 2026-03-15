@@ -42,8 +42,7 @@ export class DisplayManager{
     #useScrollPiping=false;
     #autohideActive=false;
     #autohide_always=false;
-
-    isHorizontal=false;
+    isHorizontal=false; //true for pos top&bottom, need this in coreLogic too
 
 
 	constructor(_settings,  _buttonFactory, _coreLogic){
