@@ -42,5 +42,25 @@ export default class MiscPage{
 
         group.add(rowWS);
         this.#settings.bind('per-workspace-buttons', rowWS, 'active', Gio.SettingsBindFlags.DEFAULT);
+
+
+        const group2 = new Adw.PreferencesGroup({
+            title: _('Button Drag and Drop Settings'),
+        });
+        this.page.add(group2); 
+
+        const row3 = new Adw.SwitchRow({
+            title: _('snapback'),
+            subtitle: _('<b>enabled:</b> same behaviour if drag-and-dropped inside or outside the container (will snap back into appropriate position if dropped outside)\n <b>disabled:</b> open windows if dropped outside container'),
+        });
+        group2.add(row3);
+        this.#settings.bind('snapback', row3, 'active', Gio.SettingsBindFlags.DEFAULT);
+
+        const row4 = new Adw.SwitchRow({
+            title: _('drag-scroll hack'),
+            subtitle: _('use button-drag to scroll the container. Enable this for scrolling on touch-devices. \n (touch scroll event on button-container not working)'),
+        });
+        group2.add(row4);
+        this.#settings.bind('drag-scroll-hack', row4, 'active', Gio.SettingsBindFlags.DEFAULT);
     }
 }

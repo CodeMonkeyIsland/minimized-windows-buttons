@@ -19,16 +19,24 @@ Includes a settings-page, that lets you customise it.
         </ul>
     </li>
     <li><b>Margins</b>: spacing between buttons and between the container and the screen edges</li>
+    <li><b>Button style</b>: choose colors and sizes of components</li>
+    <li><b>DnD</b>: set drag and drop behaviour. DnD over the buttoncontainer is used for reordering. Choose additional behaviour/touch-scroll-hack.</li>
+    <li><b>Touch support</b>: Usable on touch-only devices if some settings are set:</li>
+    <ul>
+        <li>drag-scroll-hack (Misc.): enable the drag-scroll-hack to use button-drag to control scroll, because touch scroll event on button-container is not working. I feel like this really shouldnt work as smooth as it does, but it does. Maybe just on my hardware? Needs calibration settings?</li>
+        <li>autohide touch hack (Misc.): TODO because container leave event isnt detected well with touch input</li>
+        <li>autohide detect container (Cover Options): set to appropriate size. Size 1 works for me with a pen and good calibration, but otherwise consider a bigger size</li>
+    </ul>
 </ul>
 
 <h3>Known Issues</h3>
 <ul>
-    <li>After reloading the extension (turning it off and on), the focused window at the that time isn't detected. Autohide works only after you change focus to another window.</li>
-    <li><b>Touch support (experimental)</b>:
-        <ul>
-            <li>Autohide does not trigger correctly because leave events are not detected. Still works fine, when you move or resize the active window. auto-show (move cursor to the edge) works ok here on debian 13 gnome 48. adjust the size of the detection zone on settings. For nicely calibrated touch, size 1 works for me.</li>
-            <li>Touch-scroll on the button container does not work.</li>
-            <li>apart from that actually working pretty well. depending on your settings and setup, it might work for you.</li>
-        </ul>
-    </li>
+    <li>After reloading the extension (turning it off and on), the focused window at that time isn't detected. Autohide works only after you change focus to another window.</li>
+    <li>Changing Screen orientation: this needs a "stick to smaller/bigger edge, prefer top/left, etc. option for some touch devices"</li>
+    <li><b>Compatibility:</b> using this together with just perfection, dash to dock and v-shell. Trying to play nice, but </li>
+    <ul>
+        <li>fighting dash to dock for window open and close animations</li>
+        <li>think im triggering an error in another extension with something else. Cant really replicate right now, need to investigate further</li>
+        <li>setting dock and buttons to the same edge is actually working now (use Placement/Margins to leave space for the dock)</li>
+    </ul>
 </ul>

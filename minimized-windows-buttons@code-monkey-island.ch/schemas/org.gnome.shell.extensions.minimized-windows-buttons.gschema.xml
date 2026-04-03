@@ -158,5 +158,13 @@
       <summary>font weight</summary>
     </key>
 
+    <key name="snapback" type="b">
+      <default>false</default>
+    </key>
+
+    <key name="drag-scroll-hack" type="b">
+      <default>false</default>
+    </key>
+
   </schema>
 </schemalist>

@@ -259,6 +259,7 @@ export class CoreLogic{
         };
     }
 
+
     #setupButton(btn, metaWindow){
         btn.connect('clicked', () => {
             let currentWorkspace = global.workspace_manager.get_active_workspace();
@@ -270,32 +271,90 @@ export class CoreLogic{
             this.#removeButton(metaWindow);
         });
 
-        //dnd reordering
+        //dnd init
         btn._draggable = DND.makeDraggable(btn, {});
 
+        /**
+         * normal hook on drag begin
+         */
         btn._draggable.connect('drag-begin', () => {
             this.#dragSuccess=false;
+            const [_x, _y] = global.get_pointer();
+            this.#displayManager.setDnDStart(_x,_y);
         });
 
 
-        const _originalUpdate = btn._draggable._updateDragPosition;
-        //important, use (event)=>{} function-define-structure to have this
-        btn._draggable._updateDragPosition = (event) => {
-            _originalUpdate.call(btn._draggable, event);//still need this?
-            let [x, y] = event.get_coords();
-            this.reorderButtons(null, x, y);
+        /**
+         * need to mess around in js/ui/dnd.js a little bit
+         * in order to process drag& drop outside the button container
+         * its for snapback reordering and snapback position if dropped outside container
+         * _updateDragPosition is also important to "detect" the container leave event during dnd
+         * if not in snapback mode
+         * 
+         * not trampling on anyones feet here, 
+         * just changing _draggable code here one button-object at a time.
+         * 
+         * important: use (event)=>{} function-define-structure to use "this"
+         * why? because thats just the way it is in js?
+         */
+
+
+        /**
+         * snapback-location on "failed" drop (outside buttoncontainer)
+         * TODO: maybe for not-snapback (open window) use cursor xy and scale 1?
+         */
+        btn._draggable._getRestoreLocation = () => {
+            let [x, y]= this.placeholderButton.get_transformed_position();
+
+            //this is basically ._draggable._getRealActorScale(actor)
+            let actor=btn._draggable._dragOrigParent;
+            let scale= 1.0;
+            while (actor) {
+                scale *= actor.scale_x;
+                actor = actor.get_parent();
+            }
+
+            return [x,y,scale]
         };
 
         /**
+         * need this for reordering in snapback-mode
+         * but also to detect the drag button container-leave-event in non-snapback-mode
+         */
+        const _originalUpdate = btn._draggable._updateDragPosition;
+        btn._draggable._updateDragPosition = (event) => {
+
+            let [x, y] = event.get_coords();
+
+            if (this.#settings.get_boolean('drag-scroll-hack')){
+                this.#displayManager.dragScrollHack(x,y);
+            }
+
+            _originalUpdate.call(btn._draggable, event);//do i still need this?
+            
+            this.reorderButtons(null, x, y);
+        };
+
+
+        /**
+         * normal hook again.
          * this gets called also if no drop on buttoncontainer
          * here case drop on !buttoncontainer gets handled. drop on buttoncontainer
          * gets handled in container-hook
          */
-
-        //here check if snapback, else do it like this.
-
         btn._draggable.connect('drag-end', (draggable) => {
             if (!this.#dragSuccess) {
+
+                //if snapback, the placeholder button is in the right place
+                if (this.#settings.get_boolean('snapback')){
+                    this.#putButtonInPlace(btn);
+                    this.#displayManager.resetAllButtonStyles();
+                    this.#displayManager.resetAllButtonwindowIconPositions();
+                    this.#displayManager.resetAllOpenWindowIconPositions();
+                    return;
+                }
+
+
                 if (metaWindow) {
                     const [px, py] = global.get_pointer();
                     const rect = new Mtk.Rectangle({ x: px, y: py, width: 1, height: 1 });
@@ -327,6 +386,7 @@ export class CoreLogic{
             }
         });
 
+
     }
 
     //-------------------------------------------------------------------------------------------------------------------------------------
@@ -342,49 +402,9 @@ export class CoreLogic{
 
         //which button is hovered over
         const children = container.get_children();
-        let hoveredBtn = null;
-        let hoveredIndex = -1;
 
-        //2. if outside container and openAtDropoutside -> hoveredIndex=-1, break.
+        let hoveredIndex=this.#getAppropriatePlaceholderIndex(children, dropX, dropY);
 
-        // else go into loop, no need to separate cases if done well
-        //2. if over container, return position or end of list -> getAppropriatePositon()
-        //3. else if outside container and not openAt..(snapback) -> get appropriate position (setting real button done on drop !success)
-        //appropriateposition returns position according to appropriate x or y vals.
-
-        for (let i = 0; i < children.length; i++) {
-            const child = children[i];
-            const [cx, cy] = child.get_transformed_position();
-
-/*
-            if (this.#dragIsOverContainer(dropX,dropY) 
-                || this.#displayManager.openAtDropOutside ){
-
-                 //not checking in the margins here!
-                if (dropX >= cx && dropX <= cx + child.width &&
-                    dropY >= cy && dropY <= cy + child.height) {
-                    hoveredBtn = child;
-                    hoveredIndex = i;
-                    break;
-                }
-
-            }else{//snapback:leave a gap in the appropriate spot
-
-            }
-        */    
-            //not checking in the margins here!
-            if (dropX >= cx && dropX <= cx + child.width &&
-                dropY >= cy && dropY <= cy + child.height) {
-                hoveredBtn = child;
-                hoveredIndex = i;
-                break;
-            }
-        }
-
-        //what to do if not on a button
-        if (hoveredIndex==-1){ //after last button
-            hoveredIndex=children.length;
-        }
 
 
         if (btn === null) { //its the placeholder (we are during drag)
@@ -393,10 +413,7 @@ export class CoreLogic{
             }
 
             // If hovering over placeholder or nothing new, do nothing
-            //if (!hoveredBtn || hoveredBtn === this.placeholderButton) {return;}
-            if (hoveredBtn === this.placeholderButton) {return;}
-
-
+            if (children[hoveredIndex] === this.placeholderButton) {return;}
 
             // Move placeholder to the new hovered position
             if (this.placeholderButton.get_parent()) {
@@ -409,6 +426,46 @@ export class CoreLogic{
             this.#putButtonInPlace(btn);
             this.#displayManager.resetAllButtonwindowIconPositions();
         }
+    }
+
+
+    #getAppropriatePlaceholderIndex(children, dropX, dropY){
+        let hoveredIndex = -1;
+
+        let snapback_enabled=this.#settings.get_boolean('snapback');
+
+        for (let i = 0; i < children.length; i++) {
+            const child = children[i];
+            const [cx, cy] = child.get_transformed_position();
+
+            if (snapback_enabled){
+                // just check x for horizontal, y for vertical
+                // return if smaller (covering button gaps)
+                if (this.#displayManager.isHorizontal){
+                    if (dropX <= cx + child.width){
+                        return i;
+                    }
+                }else{
+                    if (dropY <= cy + child.height){
+                        return i;
+                    }
+                }
+            }else{
+                //check over wich button the event is
+                //not checking in the margins here!
+                if (dropX >= cx && dropX <= cx + child.width &&
+                    dropY >= cy && dropY <= cy + child.height) {
+                    return i;
+                }
+            }
+
+        }
+
+        if (hoveredIndex==-1){
+            hoveredIndex=children.length;//after last button
+        }
+
+        return hoveredIndex;
     }
 
     #getPlaceholderIndex(){

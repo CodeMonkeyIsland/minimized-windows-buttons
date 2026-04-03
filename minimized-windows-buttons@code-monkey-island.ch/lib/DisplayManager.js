@@ -2,7 +2,7 @@
  * Here, all graphical things are done
  * this is the big boy. 
  * autohide outsourced to DisplayManager_AutohideHelper.
- * Still too large.
+ * 
  */
 
 import St from 'gi://St';
@@ -42,8 +42,19 @@ export class DisplayManager{
     #useScrollPiping=false;
     #autohideActive=false;
     #autohide_always=false;
+
+    //public bool vars (shared with coreLogic) No signals, just state helper
     isHorizontal=false; //true for pos top&bottom, need this in coreLogic too
 
+    //using those two only in coreLogic? doing polling for now
+    //snapback_enabled=false;
+    //dragScrollHack_enabled=false;
+
+    //for touch scroll hack
+    #dndStartX=0;
+    #dndStartY=0;
+    #dndVadjStart=0;
+    #dndHadjStart=0;
 
 	constructor(_settings,  _buttonFactory, _coreLogic){
 		this.#coreLogic=_coreLogic;
@@ -402,6 +413,27 @@ export class DisplayManager{
     //---------------------------------------------------------------------------------------------------------------------
     //-----------------------------------------rest------------------------------------------------------------------------
     //---------------------------------------------------------------------------------------------------------------------
+
+    setDnDStart(_x,_y){
+        this.#dndStartX=_x;
+        this.#dndStartY=_y;
+        this.#dndVadjStart=this.#scrollContainer.get_vadjustment().get_value();
+        //console.log('vadjstart:'+this.#dndVadjStart);
+        this.#dndHadjStart=this.#scrollContainer.get_hadjustment().get_value();
+        //console.log('hadjstart:'+this.#dndHadjStart);
+    }
+
+    dragScrollHack(x,y){
+        if (this.isHorizontal){
+            const hadj = this.#scrollContainer.get_hadjustment();
+            hadj.set_value(this.#dndHadjStart+x-this.#dndStartX);
+            //hadj.set_value(x-this.#dndStartX);
+        }else{
+            const vadj = this.#scrollContainer.get_vadjustment();
+            vadj.set_value(this.#dndVadjStart+y-this.#dndStartY);
+            //vadj.set_value(y-this.#dndStartY);
+        }
+    }
 
     //not triggering warnings anymore, but still not working for touch
     #scrollPiping(actor, event){

@@ -26,7 +26,7 @@ export class SettingsConnector{
     #iconHeightSignal=0;
     #lineHeightSignal=0;
 
-    //one signal per var would really do. should introduce some kind of checksum var.
+    //one signal per var (text color etc.) would really do. should introduce some kind of checksum var.
     #text_color_r_Signal=0;
     #text_color_g_Signal=0;
     #text_color_b_Signal=0;
@@ -43,6 +43,10 @@ export class SettingsConnector{
     #border_radius_Signal=0;
     #font_weight_Signal=0;
     #leave_space_margin_Signal=0;
+
+    //polling them from coreLogic for now, so no signals needed... but at what cost?
+    //#snapbackSignal=0;
+    //#dragScrollHackSignal=0;
 
 	constructor(_settings, _buttonFactory){
 		this.#settings=_settings;

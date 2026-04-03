@@ -7,5 +7,13 @@ Includes a settings page that lets you customize it:
 - Margins
 - Show in Overview (or not)
 - Per Workspace Buttons (or always show all buttons)
+- snapback; enabled: put button in place if dropped outside the buttoncontainer, disabled:open window
 
-Touch support is considered experimental at this point. Scroll and autohide not working properly on touch input.
+
+Touch support: With the right settings, the extension is actually becoming quite usable on touch-only devices:
+
+- enable drag scroll hack(Settings/Misc.): use button drag movement to control container scroll, since touch scroll is not working on the button-container.
+
+- TODO: Autohide leave event:
+
+- Autohide: set detect container size (Settings/Cover Options). Size 1 works for nicely calibrated touch display, especially with a pen. Adjust size if its not working for you.

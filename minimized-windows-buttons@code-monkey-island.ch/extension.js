@@ -9,7 +9,7 @@ import {ButtonFactory} from './lib/ButtonFactory.js';
 export default class MinimizedButtonsExtension extends Extension {
 
     #settings=null;
-    #buttonFactory=null;//helper
+    #buttonFactory=null;
 
     #coreLogic=null;
     #displayManager=null;

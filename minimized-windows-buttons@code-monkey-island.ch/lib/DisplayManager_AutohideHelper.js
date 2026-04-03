@@ -10,7 +10,7 @@
  * no hooks saved here, settings-connected and hooked vars get passed 
  * down in the piping functions as needed.
  * 
- * this means: for now, no signals can be set here -> public signal setters in piping section of DM
+ * this means: for now, no signals are to be set here -> public signal setters in piping section of DM
  * 
  */
 
@@ -175,7 +175,6 @@ export default class DisplayManager_AutohideHelper{
                         _displayManager.updateVisibilityActiveWindow();
                      }
                 }));
-
 
             }else if (_settings.get_string('cover-behaviour') == "autohide always"){
                 _scrollContainer.hide();
