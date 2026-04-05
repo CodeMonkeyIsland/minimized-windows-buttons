@@ -166,5 +166,9 @@
       <default>false</default>
     </key>
 
+    <key name="global-event-hook" type="b">
+      <default>false</default>
+    </key>
+
   </schema>
 </schemalist>

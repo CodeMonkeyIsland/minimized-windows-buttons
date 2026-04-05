@@ -169,8 +169,8 @@ export default class DisplayManager_AutohideHelper{
             if (_settings.get_string('cover-behaviour') == "autohide"){
                 //lazy
                 _displayManager.updateVisibilityActiveWindow();
-                _displayManager.set_Autohide_Leave_Signal(_scrollContainer.connect('leave-event', () => {
-                    if (!this.#pointerInside(_scrollContainer)) {
+                _displayManager.set_Autohide_Leave_Signal(_scrollContainer.connect('leave-event', (actor, event) => {
+                    if (!this.pointerInside(_scrollContainer, event)) {
                         //lazy
                         _displayManager.updateVisibilityActiveWindow();
                      }
@@ -178,8 +178,8 @@ export default class DisplayManager_AutohideHelper{
 
             }else if (_settings.get_string('cover-behaviour') == "autohide always"){
                 _scrollContainer.hide();
-                _displayManager.set_Autohide_Leave_Signal(_scrollContainer.connect('leave-event', () => {
-                    if (!this.#pointerInside(_scrollContainer)) {
+                _displayManager.set_Autohide_Leave_Signal(_scrollContainer.connect('leave-event', (actor, event) => {
+                    if (!this.pointerInside(_scrollContainer, event)) {
                         _scrollContainer.hide();
                      }
                 }));
@@ -191,8 +191,21 @@ export default class DisplayManager_AutohideHelper{
 
         _autohide_detect_container.queue_relayout();
     }
+    pointerInside(actor, event) {
+        
+        const [x, y] = event.get_coords();
 
-    #pointerInside(actor) {
+        let [success, localX, localY] = actor.transform_stage_point(x, y);
+        if (!success) {return false};
+
+        let box = actor.get_allocation_box();
+        return localX >= 0 && 
+                localX <= (box.x2 - box.x1) && 
+                localY >= 0 && 
+                localY <= (box.y2 - box.y1);
+    }
+/*
+    pointerInside(actor) {
         const [x, y] = global.get_pointer();
         const box = actor.get_allocation_box();
         return x >= box.x1 && 
@@ -200,4 +213,5 @@ export default class DisplayManager_AutohideHelper{
                 y >= box.y1 && 
                 y <= box.y2;
     }
+*/
 }

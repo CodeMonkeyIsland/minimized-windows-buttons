@@ -1,8 +1,17 @@
 /**
- * CoreLogic is for watching windows, getting ButtonFactory to make the Buttons 
- * and adding them to /removing them from the container + reordering/dnd-logic
+ * CoreLogic is for watching windows, getting ButtonFactory to make the Buttons
+ * AND doing all button operations within the container (removing, adding, reordering and
+ * showing according to workspace)
  * 
- * Placement of the container, show/hide etc. is all done in DisplayManager
+ * All button-hooks are to be set here.
+ * 
+ * everything done on the whole container and on every Button is supposed to be done in
+ * DisplayManager (the Cover-Options stuff, stacking, styling after initial production, etc.)
+ * 
+ * need to share:
+ * - the container with Displaymanager (public var)
+ * - isHorizontal from DisplayManager (public there)
+ * - windowButtons with displaymanager for resetAllButtonwindowIconPositions() -> public getter here
  * 
  */
 
@@ -17,7 +26,6 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import * as DND from 'resource:///org/gnome/shell/ui/dnd.js';
 
-//not nulling this on disable. (module level const should be gc'd on disable)
 const Mtk = imports.gi.Mtk;
 
 
@@ -38,11 +46,12 @@ export class CoreLogic{
     #windowSignals=null;
  
     //need those in DisplayManager.setWorkspaceButtonVisibility
-    _windowButtons=null; //{metawindow, button}
-    _windowWorkspaces=null; //{window, workspaceIndex}
+    #windowButtons=null; //{metawindow, button}
+    #windowWorkspaces=null; //{window, workspaceIndex}
 
     #sessionSignal=0;
     #displaySignal=0;
+    #workspaceSignal=0;
 
     #dragSuccess=false;
 
@@ -50,8 +59,8 @@ export class CoreLogic{
 
 	constructor(_settings, _buttonFactory){
 		this.#windowSignals=new Map();
-        this._windowButtons=new Map();
-        this._windowWorkspaces=new Map();
+        this.#windowButtons=new Map();
+        this.#windowWorkspaces=new Map();
         this.#settings=_settings;
         this.#buttonFactory=_buttonFactory;
 	}
@@ -59,6 +68,10 @@ export class CoreLogic{
 	setDisplayManager(_displayManager){
 		this.#displayManager=_displayManager;
 	}
+
+    getWindowButtons(){
+        return this.#windowButtons;
+    }
 
 	init(){
 
@@ -84,6 +97,11 @@ export class CoreLogic{
         for (const actor of global.get_window_actors()){
             this.#watchWindow(actor.meta_window);
         }
+
+        this.#workspaceSignal = global.workspace_manager.connect(
+            'active-workspace-changed',
+            () => this.setWorkspaceButtonVisibility()
+        );
 	}
 
 	close(){
@@ -99,6 +117,11 @@ export class CoreLogic{
             this.#displaySignal = 0;
         }
 
+        if (this.#workspaceSignal) {
+            global.workspace_manager.disconnect(this.#workspaceSignal);
+            this.#workspaceSignal = 0;
+        }
+
         for (const [win, ids] of this.#windowSignals) {
             win.disconnect(ids.minimized);
             win.disconnect(ids.unmanaged);
@@ -106,9 +129,9 @@ export class CoreLogic{
         this.#windowSignals.clear();
 
         //dont need to disconnect anything here, just clear the map
-        this._windowWorkspaces.clear();
+        this.#windowWorkspaces.clear();
 
-        for (const btn of this._windowButtons.values()) {
+        for (const btn of this.#windowButtons.values()) {
             if (this.container && btn.get_parent() === this.container) {
                 this.container.remove_child(btn);
             }
@@ -117,7 +140,7 @@ export class CoreLogic{
                 btn.destroy();
             }
         }
-        this._windowButtons.clear();
+        this.#windowButtons.clear();
 
         if (this.container) {
             this.container._delegate = null;
@@ -129,6 +152,7 @@ export class CoreLogic{
 
 	#watchWindow(metaWindow) {
         if (!metaWindow || this.#windowSignals.has(metaWindow)){
+            console.log('[Minimized Windows Buttons] WARNING: watchWindow early return!');
             return;
         }
         
@@ -147,11 +171,15 @@ export class CoreLogic{
 
         this.#windowSignals.set(metaWindow, { minimized: minimizedId, unmanaged: unmanagedId });
 
-        //initial check, if minimized, windowopen-animation-position gets et in button.click()
+        //initial check, if minimized, windowopen-animation-position gets set in button.click()
         if (metaWindow.minimized) {
             this.#ensureButton(metaWindow);
-        }else{//open windows: set animation-position position to next free slot
-            this.#displayManager.setWindowAnimationPositionOpen(metaWindow);
+        }else{
+            //open windows: set animation-position to next free slot(placeholderButton-position)
+            //Bad CodeMonkey: not understanding what to wait for
+            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
+                this.#displayManager.setWindowAnimationPositionOpen(metaWindow);
+            });
         }
     }
 
@@ -161,15 +189,15 @@ export class CoreLogic{
         metaWindow.disconnect(ids.minimized);
         metaWindow.disconnect(ids.unmanaged);
         this.#windowSignals.delete(metaWindow);
-        this._windowWorkspaces.delete(metaWindow);
+        this.#windowWorkspaces.delete(metaWindow);
     }
 
     #ensureButton(metaWindow) {
-        this._windowWorkspaces.set(
+        this.#windowWorkspaces.set(
                     metaWindow,
                     metaWindow.get_workspace().index()
         );
-        if (this._windowButtons.has(metaWindow)) {return;};
+        if (this.#windowButtons.has(metaWindow)) {return;};
 
         const btn = this.#buttonFactory.makeButton(metaWindow);
 
@@ -177,14 +205,16 @@ export class CoreLogic{
 
         this.#putButtonInPlace(btn);
 
-        this._windowButtons.set(metaWindow, btn);
+        this.#windowButtons.set(metaWindow, btn);
 
-        this.#displayManager.setWorkspaceButtonVisibility();
+        this.setWorkspaceButtonVisibility();
 
         //setting on old size here?
         this.#displayManager.setScrollcontainerReactivity();
 
         this.container.queue_relayout();
+
+        //Bad CodeMonkey: not understanding what to wait for
         GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
             this.#displayManager.resetAllOpenWindowIconPositions();
             this.#displayManager.updateIconGeometry(btn, metaWindow);
@@ -206,15 +236,15 @@ export class CoreLogic{
     }
 
     #removeButton(metaWindow) {
-        this._windowWorkspaces.delete(metaWindow);
-        const btn = this._windowButtons.get(metaWindow);
+        this.#windowWorkspaces.delete(metaWindow);
+        const btn = this.#windowButtons.get(metaWindow);
 
         if (btn) {
             if (btn._draggable) {
                 btn._draggable = null;
             }
             this.container.remove_child(btn);
-            this._windowButtons.delete(metaWindow);
+            this.#windowButtons.delete(metaWindow);
             btn.destroy();
         }
         this.#resetPlaceholder();
@@ -224,6 +254,7 @@ export class CoreLogic{
 
         //without relayout, the container leaves a gap in the buttons place
         this.container.queue_relayout();
+
         GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
             this.#displayManager.resetAllOpenWindowIconPositions();
             this.#displayManager.resetAllButtonwindowIconPositions();
@@ -279,28 +310,24 @@ export class CoreLogic{
          */
         btn._draggable.connect('drag-begin', () => {
             this.#dragSuccess=false;
-            const [_x, _y] = global.get_pointer();
-            this.#displayManager.setDnDStart(_x,_y);
+            this.#displayManager.resetDnD();
         });
 
 
         /**
          * need to mess around in js/ui/dnd.js a little bit
-         * in order to process drag& drop outside the button container
+         * 
          * its for snapback reordering and snapback position if dropped outside container
-         * _updateDragPosition is also important to "detect" the container leave event during dnd
-         * if not in snapback mode
+         * _updateDragPosition is also needed to "detect" the container leave event during dnd
+         * if not in snapback mode and for drag-scroll-hack
          * 
-         * not trampling on anyones feet here, 
-         * just changing _draggable code here one button-object at a time.
-         * 
-         * important: use (event)=>{} function-define-structure to use "this"
+         * important: use ()=>{} function-define-structure to use "this"
          * why? because thats just the way it is in js?
          */
 
 
         /**
-         * snapback-location on "failed" drop (outside buttoncontainer)
+         * need to overwrite this for snapback-location on "failed" drop (outside buttoncontainer)
          * TODO: maybe for not-snapback (open window) use cursor xy and scale 1?
          */
         btn._draggable._getRestoreLocation = () => {
@@ -324,6 +351,9 @@ export class CoreLogic{
         const _originalUpdate = btn._draggable._updateDragPosition;
         btn._draggable._updateDragPosition = (event) => {
 
+            //reducing errors on touch device
+            if (!btn._draggable._dragActor || btn._draggable._dragActor.is_finalized?.()) {return;}
+
             let [x, y] = event.get_coords();
 
             if (this.#settings.get_boolean('drag-scroll-hack')){
@@ -343,6 +373,9 @@ export class CoreLogic{
          * gets handled in container-hook
          */
         btn._draggable.connect('drag-end', (draggable) => {
+
+            this.#displayManager.resetDnD();
+
             if (!this.#dragSuccess) {
 
                 //if snapback, the placeholder button is in the right place
@@ -379,7 +412,7 @@ export class CoreLogic{
                             logError(e);
                         }
 
-                        this._windowWorkspaces.delete(metaWindow);
+                        this.#windowWorkspaces.delete(metaWindow);
                         this.#removeButton(metaWindow);
                     }
                 }
@@ -393,19 +426,10 @@ export class CoreLogic{
     //-------------------------------------------Placeholderbutton & reordering stuff------------------------------------------------------
     //-------------------------------------------------------------------------------------------------------------------------------------
 
-    //only one that needs settings?
     reorderButtons(btn, dropX, dropY) {
-        const container = this.container;
 
-        //NEED SETTINGS HERE! have ishorizontal in displaymanager, public and hooked to position on screen
-        const isHorizontal = ['top', 'bottom'].includes(this.#settings.get_string('position-on-screen'));
-
-        //which button is hovered over
-        const children = container.get_children();
-
+        const children = this.container.get_children();
         let hoveredIndex=this.#getAppropriatePlaceholderIndex(children, dropX, dropY);
-
-
 
         if (btn === null) { //its the placeholder (we are during drag)
             if (!this.placeholderButton) {
@@ -417,10 +441,10 @@ export class CoreLogic{
 
             // Move placeholder to the new hovered position
             if (this.placeholderButton.get_parent()) {
-                container.remove_child(this.placeholderButton);
+                this.container.remove_child(this.placeholderButton);
             }
-            container.add_child(this.placeholderButton);
-            container.set_child_at_index(this.placeholderButton, hoveredIndex);
+            this.container.add_child(this.placeholderButton);
+            this.container.set_child_at_index(this.placeholderButton, hoveredIndex);
 
         }else{ //not the placeholder, but the real button, dropped into container
             this.#putButtonInPlace(btn);
@@ -429,6 +453,7 @@ export class CoreLogic{
     }
 
 
+    //still one nasty settings call
     #getAppropriatePlaceholderIndex(children, dropX, dropY){
         let hoveredIndex = -1;
 
@@ -452,7 +477,7 @@ export class CoreLogic{
                 }
             }else{
                 //check over wich button the event is
-                //not checking in the margins here!
+                //not checking in the margins here!!!
                 if (dropX >= cx && dropX <= cx + child.width &&
                     dropY >= cy && dropY <= cy + child.height) {
                     return i;
@@ -474,7 +499,7 @@ export class CoreLogic{
 
     #resetPlaceholder(){
         if (this.placeholderButton==null){
-            console.log('Minimized Windows Buttons WARNING: placeholderButton=null, this is ok only on init!');
+            console.log('[Minimized Windows Buttons] WARNING: placeholderButton=null, this is ok only during init!');
             this.placeholderButton=this.#buttonFactory.makePlaceholderButton();
         }
         if (this.placeholderButton.get_parent()){this.placeholderButton.get_parent().remove_child(this.placeholderButton);}
@@ -493,4 +518,24 @@ export class CoreLogic{
         }
     }
 
+    //-------------------------------------------------------------------------------------------------------------------------------------
+    //-------------------------------------------Rest: Workspacebuttonvisibility, ... -----------------------------------------------------
+    //-------------------------------------------------------------------------------------------------------------------------------------
+    setWorkspaceButtonVisibility(){
+        if (this.#settings.get_boolean('per-workspace-buttons')){
+            let currentWorkspaceNr=global.workspace_manager.get_active_workspace().index();
+            for (let [metaWindow, btn] of this.#windowButtons) {
+                let windowWorkspaceNr = this.#windowWorkspaces.get(metaWindow);
+                if (windowWorkspaceNr==currentWorkspaceNr){
+                    btn.visible=true;
+                }else{
+                    btn.visible=false;
+                }
+            }
+        }else{
+            for (let [metaWindow, btn] of this.#windowButtons) {
+                btn.visible=true;
+            }
+        }
+    }
 }

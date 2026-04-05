@@ -25,6 +25,7 @@ export default class MinimizedButtonsExtension extends Extension {
 
         this.#coreLogic.setDisplayManager(this.#displayManager);
         this.#settingsConnector.setDisplayManager(this.#displayManager);
+        this.#settingsConnector.setCoreLogic(this.#coreLogic);
 
         this.#settingsConnector.connect();
         this.#buttonFactory.init(); //not really a init, more like "reset to new settings"

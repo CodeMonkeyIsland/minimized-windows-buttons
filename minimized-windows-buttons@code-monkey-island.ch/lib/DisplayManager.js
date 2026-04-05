@@ -1,6 +1,10 @@
 /**
  * Here, all graphical things are done
- * this is the big boy. 
+ * 
+ * Basically all Operations on the whole container and all buttons
+ * Operations inside the container (adding/removing buttons, button hooks, reordering, workspacevisibility ...)
+ * are done in coreLogic
+ * 
  * autohide outsourced to DisplayManager_AutohideHelper.
  * 
  */
@@ -22,7 +26,6 @@ export class DisplayManager{
     #coreLogic=null;
     #autohideHelper=null;
 
-    #workspaceSignal=0;
     #focusSignal=0;
     #scrollOverwriteSignal=0;
     #monitorResizeSignal=0;
@@ -51,10 +54,14 @@ export class DisplayManager{
     //dragScrollHack_enabled=false;
 
     //for touch scroll hack
-    #dndStartX=0;
-    #dndStartY=0;
-    #dndVadjStart=0;
-    #dndHadjStart=0;
+    #dndStartX=null;
+    #dndStartY=null;
+    #buttonMargin=0; //setting at drag start
+
+    //autohide for touch
+    //nasty: global event hook
+    #globalEventSignal=null;
+
 
 	constructor(_settings,  _buttonFactory, _coreLogic){
 		this.#coreLogic=_coreLogic;
@@ -80,11 +87,6 @@ export class DisplayManager{
             x_expand: false,
             y_expand: false,
         });
-
-		this.#workspaceSignal = global.workspace_manager.connect(
-            'active-workspace-changed',
-            () => this.setWorkspaceButtonVisibility()
-        );
 
         //decide what to do inside the function, calling it at any cover-behaviour
         this.#focusSignal = global.display.connect('notify::focus-window', () => {
@@ -113,17 +115,39 @@ export class DisplayManager{
         this.#overviewHideSignal=Main.overview.connect('hiding', () => this.setOverviewVisibility());
         this.setOverviewVisibility();
 
-        
+        if (this.#settings.get_boolean('global-event-hook') ){
+            this.setupGlobalEventHook();
+        }
 	}
 
+    setupGlobalEventHook(){
+        this.#globalEventSignal= global.stage.connect('captured-event', (stage, event) => {
+
+            if (!this.#autohideActive){return Clutter.EVENT_PROPAGATE;}
+
+            if (event.type() === Clutter.EventType.BUTTON_PRESS || 
+                event.type() === Clutter.EventType.TOUCH_BEGIN) {
+                
+                if (!this.#autohideHelper.pointerInside(this.#scrollContainer, event)) {
+                    //lazy
+                    this.updateVisibilityActiveWindow();
+                }
+            }
+            return Clutter.EVENT_PROPAGATE;
+        });
+    }
+
+    disconnectGlobalEventHook(){
+        if (this.#globalEventSignal) {
+            global.stage.disconnect(this.#globalEventSignal);
+            this.#globalEventSignal= 0;
+        }
+    }
+
 	close(){
+        this.disconnectGlobalEventHook();
         this.disconnectAutohideSignals();
         this.disconnectWindowDragAndRezizeSignals();
-
-        if (this.#workspaceSignal) {
-            global.workspace_manager.disconnect(this.#workspaceSignal);
-            this.#workspaceSignal = 0;
-        }
 
         if (this.#focusSignal) {
             global.display.disconnect(this.#focusSignal);
@@ -414,25 +438,57 @@ export class DisplayManager{
     //-----------------------------------------rest------------------------------------------------------------------------
     //---------------------------------------------------------------------------------------------------------------------
 
-    setDnDStart(_x,_y){
-        this.#dndStartX=_x;
-        this.#dndStartY=_y;
-        this.#dndVadjStart=this.#scrollContainer.get_vadjustment().get_value();
-        //console.log('vadjstart:'+this.#dndVadjStart);
-        this.#dndHadjStart=this.#scrollContainer.get_hadjustment().get_value();
-        //console.log('hadjstart:'+this.#dndHadjStart);
+
+    /**
+     * drag-scroll-hack:
+     * still spitting out some errors on touch devices,
+     * probalby, because im messing around in dnd.js in coreLogic.
+     * but it works.
+     */
+
+    resetDnD(){
+        this.#dndStartX=null;
+        this.#dndStartY=null;
+        this.#buttonMargin=this.#settings.get_int('margin-buttons');
     }
 
+    //if dragged inside the container, scroll with the drag movement 
+    //if dragged outside the container, dont scroll (dnd reordering)
     dragScrollHack(x,y){
-        if (this.isHorizontal){
-            const hadj = this.#scrollContainer.get_hadjustment();
-            hadj.set_value(this.#dndHadjStart+x-this.#dndStartX);
-            //hadj.set_value(x-this.#dndStartX);
-        }else{
-            const vadj = this.#scrollContainer.get_vadjustment();
-            vadj.set_value(this.#dndVadjStart+y-this.#dndStartY);
-            //vadj.set_value(y-this.#dndStartY);
+        if (!this.#isInsideButtonContainer(x,y)){
+            this.resetDnD();
+            return;
         }
+
+        //always setting both, need to check only one
+        if (this.#dndStartX==null){
+            this.#dndStartX=x;
+            this.#dndStartY=y;
+        }
+
+        if (this.isHorizontal){
+            const dndHadjStart=this.#scrollContainer.get_hadjustment().get_value();
+            const hadj = this.#scrollContainer.get_hadjustment();
+            hadj.set_value(dndHadjStart-(x-this.#dndStartX));
+        }else{
+            const dndVadjStart=this.#scrollContainer.get_vadjustment().get_value()
+            const vadj = this.#scrollContainer.get_vadjustment();
+            vadj.set_value(dndVadjStart-(y-this.#dndStartY));
+        }
+        this.#dndStartX=x;
+        this.#dndStartY=y;
+    }
+
+    //container.get_transformed_extents() gets the screen-pixel value. (zero is top/left)
+    //no more messing around with allocation box and adjustments!
+    //but: need to adjust a bit for buttonmargins, or feels strange (dropping out too soon/often)
+    #isInsideButtonContainer(x,y){
+        //const rect = this.#coreLogic.container.get_transformed_extents();
+        const rect = this.#scrollContainer.get_transformed_extents();
+        return x+this.#buttonMargin >= rect.origin.x && 
+               x-this.#buttonMargin <= rect.origin.x + rect.size.width && 
+               y+this.#buttonMargin >= rect.origin.y && 
+               y-this.#buttonMargin <= rect.origin.y + rect.size.height;
     }
 
     //not triggering warnings anymore, but still not working for touch
@@ -482,27 +538,6 @@ export class DisplayManager{
         this.setScrollcontainerReactivity();
     }
 
-    //this is the only one using coreLogic vars!? -> nah, also dnd reorder logic.
-    //pro corelogic: can make windowWorkspaces&windowButtons private in coreLogic. Clean.
-    //contra corelogic: visibility belongs here, AND coreLogic doesnt need Settingsconnector until now.
-    setWorkspaceButtonVisibility(){
-        if (this.#settings.get_boolean('per-workspace-buttons')){
-            let currentWorkspaceNr=global.workspace_manager.get_active_workspace().index();
-            for (let [metaWindow, btn] of this.#coreLogic._windowButtons) {
-                let windowWorkspaceNr = this.#coreLogic._windowWorkspaces.get(metaWindow);
-                if (windowWorkspaceNr==currentWorkspaceNr){
-                    btn.visible=true;
-                }else{
-                    btn.visible=false;
-                }
-            }
-        }else{
-            for (let [metaWindow, btn] of this.#coreLogic._windowButtons) {
-                btn.visible=true;
-            }
-        }
-    }
-
     //needs to go into autohide?
     //WARNING watch out for placeholderButton!!!!
     setScrollcontainerReactivity(){
@@ -527,9 +562,6 @@ export class DisplayManager{
         }
     }
 
-    //reset windowiconpos when reorder,open, click, with add only open windows.
-    //lets do it right and grab private windowbuttonslist from public getter in corelogic
-
     //set all to placeholder-position
     resetAllOpenWindowIconPositions(){
         for (const actor of global.get_window_actors()){
@@ -540,7 +572,7 @@ export class DisplayManager{
     }
 
     resetAllButtonwindowIconPositions(){
-        for (let [metaWindow, btn] of this.#coreLogic._windowButtons) {
+        for (let [metaWindow, btn] of this.#coreLogic.getWindowButtons()) {
             if (btn!==this.#coreLogic.placeholderButton){
                 this.updateIconGeometry(btn, metaWindow);
             }

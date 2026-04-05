@@ -20,7 +20,7 @@ Includes a settings-page, that lets you customise it.
     </li>
     <li><b>Margins</b>: spacing between buttons and between the container and the screen edges</li>
     <li><b>Button style</b>: choose colors and sizes of components</li>
-    <li><b>DnD</b>: set drag and drop behaviour. DnD over the buttoncontainer is used for reordering. Choose additional behaviour/touch-scroll-hack.</li>
+    <li><b>DnD</b>: set drag and drop behaviour. DnD over the buttoncontainer is used for reordering. Choose additional behaviour/drag-scroll-hack.</li>
     <li><b>Touch support</b>: Usable on touch-only devices if some settings are set:</li>
     <ul>
         <li>drag-scroll-hack (Misc.): enable the drag-scroll-hack to use button-drag to control scroll, because touch scroll event on button-container is not working. I feel like this really shouldnt work as smooth as it does, but it does. Maybe just on my hardware? Needs calibration settings?</li>
@@ -32,7 +32,7 @@ Includes a settings-page, that lets you customise it.
 <h3>Known Issues</h3>
 <ul>
     <li>After reloading the extension (turning it off and on), the focused window at that time isn't detected. Autohide works only after you change focus to another window.</li>
-    <li>Changing Screen orientation: this needs a "stick to smaller/bigger edge, prefer top/left, etc. option for some touch devices"</li>
+    <li>Changing Screen orientation: this needs a "stick to smaller/bigger edge, prefer top/left", etc. option for some touch devices</li>
     <li><b>Compatibility:</b> using this together with just perfection, dash to dock and v-shell. Trying to play nice, but </li>
     <ul>
         <li>fighting dash to dock for window open and close animations</li>

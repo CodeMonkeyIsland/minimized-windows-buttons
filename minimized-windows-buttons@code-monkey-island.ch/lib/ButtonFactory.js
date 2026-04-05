@@ -1,5 +1,6 @@
 /**
  * Makes and changes Buttons
+ * no hooks are to be set here, doing that in coreLogic
  */
 
 import St from 'gi://St';

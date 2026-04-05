@@ -11,6 +11,7 @@ export class SettingsConnector{
 
     #settings=null;
 
+    #coreLogic=null;
     #displayManager=null;
     #buttonFactory=null;
 
@@ -48,6 +49,8 @@ export class SettingsConnector{
     //#snapbackSignal=0;
     //#dragScrollHackSignal=0;
 
+    #global_event_signal=0;
+
 	constructor(_settings, _buttonFactory){
 		this.#settings=_settings;
         this.#buttonFactory=_buttonFactory;
@@ -57,7 +60,21 @@ export class SettingsConnector{
 		this.#displayManager=_displayManager;
 	}
 
+    setCoreLogic(_coreLogic){
+        this.#coreLogic=_coreLogic;
+    }
+
 	connect(){
+
+        this.#global_event_signal=this.#settings.connect('changed::global-event-hook', () => {
+            const isEnabled = this.#settings.get_boolean('global-event-hook');
+            if (isEnabled){
+                this.#displayManager.setupGlobalEventHook();
+            }else{
+                this.#displayManager.disconnectGlobalEventHook();
+            }
+        });
+
 		this.#coverSignal=this.#settings.connect('changed::cover-behaviour', () => {
             this.#displayManager.setCoverOption();
             this.#displayManager.setupAutohideDetector();
@@ -91,18 +108,20 @@ export class SettingsConnector{
         });
 
         this.#perWorkspaceSignal=this.#settings.connect('changed::per-workspace-buttons', () => {
-            this.#displayManager.setWorkspaceButtonVisibility();
+            this.#coreLogic.setWorkspaceButtonVisibility();
         });
 
         this.#buttonHeightSignal=this.#settings.connect('changed::button-height', () => {
             this.#buttonFactory.init();
-            this.#displayManager.resetAllButtonStyles();
+            //this.#displayManager.resetAllButtonStyles();
+            this.#displayManager.setPosition();
             this.#displayManager.setScrollcontainerReactivity();
         });
 
         this.#buttonWidthSignal=this.#settings.connect('changed::button-width', () => {
             this.#buttonFactory.init();
-            this.#displayManager.resetAllButtonStyles();
+            //this.#displayManager.resetAllButtonStyles();
+            this.#displayManager.setPosition();
             this.#displayManager.setScrollcontainerReactivity();
         });
 
@@ -185,6 +204,12 @@ export class SettingsConnector{
 	}
 
 	disconnect(){
+
+        if (this.#global_event_signal) {
+            this.#settings.disconnect(this.#global_event_signal);
+            this.#global_event_signal = 0;
+        }
+
         if (this.#coverSignal) {
             this.#settings.disconnect(this.#coverSignal);
             this.#coverSignal = 0;

@@ -22,8 +22,6 @@ export default class MiscPage{
         });
         this.page.add(group); 
 
-
-
         // show in overview?
         const row = new Adw.SwitchRow({
             title: _('Show in Overview'),
@@ -31,8 +29,6 @@ export default class MiscPage{
         });
         group.add(row);
         this.#settings.bind('show-in-overview', row, 'active', Gio.SettingsBindFlags.DEFAULT);
-
-
 
         // stick to workspace or always visible
         const rowWS = new Adw.SwitchRow({
@@ -44,8 +40,10 @@ export default class MiscPage{
         this.#settings.bind('per-workspace-buttons', rowWS, 'active', Gio.SettingsBindFlags.DEFAULT);
 
 
+
+
         const group2 = new Adw.PreferencesGroup({
-            title: _('Button Drag and Drop Settings'),
+            title: _('Button Drag and Drop'),
         });
         this.page.add(group2); 
 
@@ -56,11 +54,26 @@ export default class MiscPage{
         group2.add(row3);
         this.#settings.bind('snapback', row3, 'active', Gio.SettingsBindFlags.DEFAULT);
 
+
+
+
+        const group3 = new Adw.PreferencesGroup({
+            title: _('Touch Support'),
+        });
+        this.page.add(group3); 
+
         const row4 = new Adw.SwitchRow({
             title: _('drag-scroll hack'),
             subtitle: _('use button-drag to scroll the container. Enable this for scrolling on touch-devices. \n (touch scroll event on button-container not working)'),
         });
-        group2.add(row4);
+        group3.add(row4);
         this.#settings.bind('drag-scroll-hack', row4, 'active', Gio.SettingsBindFlags.DEFAULT);
+
+        const row5 = new Adw.SwitchRow({
+            title: _('autohide global event hook'),
+            subtitle: _('the leave-event isnt triggered on touch-devices. Add a hook to global event, and check every every time...'),
+        });
+        group3.add(row5);
+        this.#settings.bind('global-event-hook', row5, 'active', Gio.SettingsBindFlags.DEFAULT);
     }
 }
