@@ -1,6 +1,6 @@
 /**
  * Makes and changes Buttons
- * no hooks are to be set here, doing that in coreLogic
+ * no hooks/signals are to be saved here, doing that in coreLogic
  */
 
 import St from 'gi://St';
@@ -14,8 +14,8 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 export class ButtonFactory{
 
-    //setting them on init now, set them here to 0? not set it at all?
-	#buttonWidth=0;
+    //setting them on init now
+    #buttonWidth=0;
 	#buttonHeight=0;
     #iconHeight=0;
     #lineHeight=0;

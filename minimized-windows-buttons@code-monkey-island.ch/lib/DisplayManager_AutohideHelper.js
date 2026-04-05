@@ -107,14 +107,10 @@ export default class DisplayManager_AutohideHelper{
             //the newly focussed window
             let win = global.display.get_focus_window();
             if (!win) {
-                console.log('no window');
+                console.log('no focus window');
                 return false;
             }
-/*not working
-            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
-                _displayManager.setWindowAnimationPositionOpen(win);
-            });
-*/
+            
             _displayManager.disconnectWindowDragAndRezizeSignals();
 
             _displayManager.setResizeSignal(
@@ -191,12 +187,14 @@ export default class DisplayManager_AutohideHelper{
 
         _autohide_detect_container.queue_relayout();
     }
+
+    //should really decide on some general policy
+    //on what coords to use everywhere... 
     pointerInside(actor, event) {
         
         const [x, y] = event.get_coords();
-
         let [success, localX, localY] = actor.transform_stage_point(x, y);
-        if (!success) {return false};
+        if (!success) {return false;}
 
         let box = actor.get_allocation_box();
         return localX >= 0 && 
@@ -204,14 +202,6 @@ export default class DisplayManager_AutohideHelper{
                 localY >= 0 && 
                 localY <= (box.y2 - box.y1);
     }
-/*
-    pointerInside(actor) {
-        const [x, y] = global.get_pointer();
-        const box = actor.get_allocation_box();
-        return x >= box.x1 && 
-                x <= box.x2 && 
-                y >= box.y1 && 
-                y <= box.y2;
-    }
-*/
+
+
 }

@@ -1,7 +1,7 @@
 <h2><b>Minimized Windows Buttons</b></h2>
 
 <p>
-A GNOME Shell extension that displays buttons along the screen edge for each minimized window. Click on them to reopen the window.<br>
+A GNOME Shell extension that displays buttons along the screen edge for each minimized window. Click on them to reopen the window.<br><br>
 Includes a settings-page, that lets you customise it.
 </p>
 
@@ -20,19 +20,21 @@ Includes a settings-page, that lets you customise it.
     </li>
     <li><b>Margins</b>: spacing between buttons and between the container and the screen edges</li>
     <li><b>Button style</b>: choose colors and sizes of components</li>
-    <li><b>DnD</b>: set drag and drop behaviour. DnD over the buttoncontainer is used for reordering. Choose additional behaviour/drag-scroll-hack.</li>
+    <li><b>DnD</b>: set drag and drop behaviour.</li>
     <li><b>Touch support</b>: Usable on touch-only devices if some settings are set:</li>
     <ul>
         <li>drag-scroll-hack (Misc.): enable the drag-scroll-hack to use button-drag to control scroll, because touch scroll event on button-container is not working. I feel like this really shouldnt work as smooth as it does, but it does. Maybe just on my hardware? Needs calibration settings?</li>
-        <li>autohide touch hack (Misc.): TODO because container leave event isnt detected well with touch input</li>
+        <li>autohide global event hook (Misc.): this is insanity! But im not getting leave-events with touch. Its working pretty smooth, but still, only enable this for autohide on touch-only-devices.</li>
         <li>autohide detect container (Cover Options): set to appropriate size. Size 1 works for me with a pen and good calibration, but otherwise consider a bigger size</li>
+        <li>snapback(Misc.): enable snapback, so windows will snap back into position instead of opening when dropped outside the container</li>
     </ul>
 </ul>
 
 <h3>Known Issues</h3>
 <ul>
     <li>After reloading the extension (turning it off and on), the focused window at that time isn't detected. Autohide works only after you change focus to another window.</li>
-    <li>Changing Screen orientation: this needs a "stick to smaller/bigger edge, prefer top/left", etc. option for some touch devices</li>
+    <li>After suspend, sometimes autohideHelper is null. Cant replicate well...</li>
+    <li>Changing Screen orientation: this would need a "stick to smaller/bigger edge, prefer top/left", etc. option for some touch devices</li>
     <li><b>Compatibility:</b> using this together with just perfection, dash to dock and v-shell. Trying to play nice, but </li>
     <ul>
         <li>fighting dash to dock for window open and close animations</li>

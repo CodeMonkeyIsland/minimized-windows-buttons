@@ -6,10 +6,10 @@
  * All button-hooks are to be set here.
  * 
  * everything done on the whole container and on every Button is supposed to be done in
- * DisplayManager (the Cover-Options stuff, stacking, styling after initial production, etc.)
+ * DisplayManager (the Placement& Cover-Options stuff, stacking, styling after initial production, etc.)
  * 
  * need to share:
- * - the container with Displaymanager (public var)
+ * - the container with Displaymanager (public here)
  * - isHorizontal from DisplayManager (public there)
  * - windowButtons with displaymanager for resetAllButtonwindowIconPositions() -> public getter here
  * 
@@ -44,8 +44,6 @@ export class CoreLogic{
     container=null;
 
     #windowSignals=null;
- 
-    //need those in DisplayManager.setWorkspaceButtonVisibility
     #windowButtons=null; //{metawindow, button}
     #windowWorkspaces=null; //{window, workspaceIndex}
 
@@ -223,7 +221,7 @@ export class CoreLogic{
 
     #putButtonInPlace(btn){
         let placeholderIndex=this.#getPlaceholderIndex();
-        if (placeholderIndex==-1){console.log('Minimized Windows Buttons WARNING: calling putButtonInPlace with placeholderIndex=-1!');}
+        if (placeholderIndex==-1){console.log('[Minimized Windows Buttons] WARNING: calling putButtonInPlace with placeholderIndex=-1!');}
         if (btn.get_parent()!==this.container){
             if (btn.get_parent()!==null){
                 btn.get_parent().remove_child(btn);
@@ -270,7 +268,6 @@ export class CoreLogic{
         //dnd receive functionality
         this.container._delegate = {
             handleDragOver: (source, actor, x, y, time) => {
-                //this.#displayManager.reorderButtons(null, x, y);
                 return DND.DragDropResult.CONTINUE;
                 //return DND.DragMotionResult.MOVE
             },
@@ -302,10 +299,11 @@ export class CoreLogic{
             this.#removeButton(metaWindow);
         });
 
-        //dnd init
         btn._draggable = DND.makeDraggable(btn, {});
-
         /**
+         * important: use ()=>{} function-define-structure to use "this"
+         * why? because thats just the way it is in js. its nice to have this here.
+         * 
          * normal hook on drag begin
          */
         btn._draggable.connect('drag-begin', () => {
@@ -315,25 +313,20 @@ export class CoreLogic{
 
 
         /**
-         * need to mess around in js/ui/dnd.js a little bit
-         * 
-         * its for snapback reordering and snapback position if dropped outside container
-         * _updateDragPosition is also needed to "detect" the container leave event during dnd
-         * if not in snapback mode and for drag-scroll-hack
-         * 
-         * important: use ()=>{} function-define-structure to use "this"
-         * why? because thats just the way it is in js?
+         * need to mess around in gnome-shell's js/ui/dnd.js a little bit for the next 2 hooks
+         * -> should have a closer look at the originals and do some checks.
          */
-
 
         /**
          * need to overwrite this for snapback-location on "failed" drop (outside buttoncontainer)
+         * seems the simplest solution right now, 
+         * 
          * TODO: maybe for not-snapback (open window) use cursor xy and scale 1?
          */
         btn._draggable._getRestoreLocation = () => {
             let [x, y]= this.placeholderButton.get_transformed_position();
 
-            //this is basically ._draggable._getRealActorScale(actor)
+            //this is basically _draggable._getRealActorScale(actor)
             let actor=btn._draggable._dragOrigParent;
             let scale= 1.0;
             while (actor) {
@@ -431,7 +424,8 @@ export class CoreLogic{
         const children = this.container.get_children();
         let hoveredIndex=this.#getAppropriatePlaceholderIndex(children, dropX, dropY);
 
-        if (btn === null) { //its the placeholder (we are during drag)
+        //its the placeholder (we are during drag)
+        if (btn === null) {
             if (!this.placeholderButton) {
                 this.placeholderButton = this.#buttonFactory.makePlaceholderButton();
             }
@@ -446,7 +440,8 @@ export class CoreLogic{
             this.container.add_child(this.placeholderButton);
             this.container.set_child_at_index(this.placeholderButton, hoveredIndex);
 
-        }else{ //not the placeholder, but the real button, dropped into container
+        //not the placeholder, but the real button, dropped into container
+        }else{ 
             this.#putButtonInPlace(btn);
             this.#displayManager.resetAllButtonwindowIconPositions();
         }
@@ -476,7 +471,7 @@ export class CoreLogic{
                     }
                 }
             }else{
-                //check over wich button the event is
+                //check over which button the event is
                 //not checking in the margins here!!!
                 if (dropX >= cx && dropX <= cx + child.width &&
                     dropY >= cy && dropY <= cy + child.height) {

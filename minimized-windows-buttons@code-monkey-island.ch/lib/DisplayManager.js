@@ -5,7 +5,7 @@
  * Operations inside the container (adding/removing buttons, button hooks, reordering, workspacevisibility ...)
  * are done in coreLogic
  * 
- * autohide outsourced to DisplayManager_AutohideHelper.
+ * autohide outsourced to DisplayManager_AutohideHelper. Functions of the same name get piped to it. 
  * 
  */
 
@@ -45,13 +45,8 @@ export class DisplayManager{
     #useScrollPiping=false;
     #autohideActive=false;
     #autohide_always=false;
-
-    //public bool vars (shared with coreLogic) No signals, just state helper
+    //public (shared with coreLogic)
     isHorizontal=false; //true for pos top&bottom, need this in coreLogic too
-
-    //using those two only in coreLogic? doing polling for now
-    //snapback_enabled=false;
-    //dragScrollHack_enabled=false;
 
     //for touch scroll hack
     #dndStartX=null;
@@ -120,29 +115,6 @@ export class DisplayManager{
         }
 	}
 
-    setupGlobalEventHook(){
-        this.#globalEventSignal= global.stage.connect('captured-event', (stage, event) => {
-
-            if (!this.#autohideActive){return Clutter.EVENT_PROPAGATE;}
-
-            if (event.type() === Clutter.EventType.BUTTON_PRESS || 
-                event.type() === Clutter.EventType.TOUCH_BEGIN) {
-                
-                if (!this.#autohideHelper.pointerInside(this.#scrollContainer, event)) {
-                    //lazy
-                    this.updateVisibilityActiveWindow();
-                }
-            }
-            return Clutter.EVENT_PROPAGATE;
-        });
-    }
-
-    disconnectGlobalEventHook(){
-        if (this.#globalEventSignal) {
-            global.stage.disconnect(this.#globalEventSignal);
-            this.#globalEventSignal= 0;
-        }
-    }
 
 	close(){
         this.disconnectGlobalEventHook();
@@ -452,8 +424,10 @@ export class DisplayManager{
         this.#buttonMargin=this.#settings.get_int('margin-buttons');
     }
 
-    //if dragged inside the container, scroll with the drag movement 
-    //if dragged outside the container, dont scroll (dnd reordering)
+    /**
+     * if dragged inside the container, scroll with the drag movement 
+     * if dragged outside the container, dont scroll (dnd reordering)
+     */
     dragScrollHack(x,y){
         if (!this.#isInsideButtonContainer(x,y)){
             this.resetDnD();
@@ -479,11 +453,12 @@ export class DisplayManager{
         this.#dndStartY=y;
     }
 
-    //container.get_transformed_extents() gets the screen-pixel value. (zero is top/left)
-    //no more messing around with allocation box and adjustments!
-    //but: need to adjust a bit for buttonmargins, or feels strange (dropping out too soon/often)
+    /**
+     * container.get_transformed_extents() gets the screen-pixel value. (zero is top/left)
+     * no more messing around with allocation box and adjustments!
+     * but: need to adjust a bit for buttonmargins, or feels strange (dropping out too soon/often)
+     */
     #isInsideButtonContainer(x,y){
-        //const rect = this.#coreLogic.container.get_transformed_extents();
         const rect = this.#scrollContainer.get_transformed_extents();
         return x+this.#buttonMargin >= rect.origin.x && 
                x-this.#buttonMargin <= rect.origin.x + rect.size.width && 
@@ -617,10 +592,33 @@ export class DisplayManager{
         metaWindow.set_icon_geometry(rect);
     }
 
+    setupGlobalEventHook(){
+        this.#globalEventSignal= global.stage.connect('captured-event', (stage, event) => {
+
+            if (!this.#autohideActive){return Clutter.EVENT_PROPAGATE;}
+
+            if (event.type() === Clutter.EventType.BUTTON_PRESS || 
+                event.type() === Clutter.EventType.TOUCH_BEGIN) {
+                
+                if (!this.#autohideHelper.pointerInside(this.#scrollContainer, event)) {
+                    //lazy
+                    this.updateVisibilityActiveWindow();
+                }
+            }
+            return Clutter.EVENT_PROPAGATE;
+        });
+    }
 
 //---------------------------------------------------------------------------------------------------------------------
 //-----------------------------------------disconnect/disable----------------------------------------------------------
 //---------------------------------------------------------------------------------------------------------------------
+    disconnectGlobalEventHook(){
+        if (this.#globalEventSignal) {
+            global.stage.disconnect(this.#globalEventSignal);
+            this.#globalEventSignal= 0;
+        }
+    }
+
     #destroyUIElements(){
         Main.layoutManager.removeChrome(this.#scrollContainer);
         Main.layoutManager.removeChrome(this.#autohide_detect_container);

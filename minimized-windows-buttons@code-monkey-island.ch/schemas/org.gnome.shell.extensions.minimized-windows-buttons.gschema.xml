@@ -159,7 +159,7 @@
     </key>
 
     <key name="snapback" type="b">
-      <default>false</default>
+      <default>true</default>
     </key>
 
     <key name="drag-scroll-hack" type="b">
