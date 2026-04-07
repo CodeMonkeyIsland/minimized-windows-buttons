@@ -27,19 +27,9 @@ export class SettingsConnector{
     #iconHeightSignal=0;
     #lineHeightSignal=0;
 
-    //one signal per var (text color etc.) would really do. should introduce some kind of checksum var.
-    #text_color_r_Signal=0;
-    #text_color_g_Signal=0;
-    #text_color_b_Signal=0;
-    #text_color_a_Signal=0;
-    #bg_color_r_Signal=0;
-    #bg_color_g_Signal=0;
-    #bg_color_b_Signal=0;
-    #bg_color_a_Signal=0;
-    #border_color_r_Signal=0;
-    #border_color_g_Signal=0;
-    #border_color_b_Signal=0;
-    #border_color_a_Signal=0;
+    #text_color_signal=0;
+    #bg_color_signal=0;
+    #border_color_signal=0;
 
     #border_radius_Signal=0;
     #font_weight_Signal=0;
@@ -135,54 +125,17 @@ export class SettingsConnector{
             this.#displayManager.resetAllButtonStyles();
         });
 
-
-        this.#text_color_r_Signal=this.#settings.connect('changed::text-color-r', () => {
-            this.#buttonFactory.init();
-            this.#displayManager.resetAllButtonStyles();
-        });
-        this.#text_color_g_Signal=this.#settings.connect('changed::text-color-g', () => {
-            this.#buttonFactory.init();
-            this.#displayManager.resetAllButtonStyles();
-        });
-        this.#text_color_b_Signal=this.#settings.connect('changed::text-color-b', () => {
-            this.#buttonFactory.init();
-            this.#displayManager.resetAllButtonStyles();
-        });
-        this.#text_color_a_Signal=this.#settings.connect('changed::text-color-a', () => {
+        this.#text_color_signal=this.#settings.connect('changed::text-color', () => {
             this.#buttonFactory.init();
             this.#displayManager.resetAllButtonStyles();
         });
 
-        this.#bg_color_r_Signal=this.#settings.connect('changed::bg-color-r', () => {
-            this.#buttonFactory.init();
-            this.#displayManager.resetAllButtonStyles();
-        });
-        this.#bg_color_g_Signal=this.#settings.connect('changed::bg-color-g', () => {
-            this.#buttonFactory.init();
-            this.#displayManager.resetAllButtonStyles();
-        });
-        this.#bg_color_b_Signal=this.#settings.connect('changed::bg-color-b', () => {
-            this.#buttonFactory.init();
-           this.#displayManager.resetAllButtonStyles();
-        });
-        this.#bg_color_a_Signal=this.#settings.connect('changed::bg-color-a', () => {
+        this.#bg_color_signal=this.#settings.connect('changed::bg-color', () => {
             this.#buttonFactory.init();
             this.#displayManager.resetAllButtonStyles();
         });
 
-        this.#border_color_r_Signal=this.#settings.connect('changed::border-color-r', () => {
-            this.#buttonFactory.init();
-            this.#displayManager.resetAllButtonStyles();
-        });
-        this.#border_color_g_Signal=this.#settings.connect('changed::border-color-g', () => {
-            this.#buttonFactory.init();
-            this.#displayManager.resetAllButtonStyles();
-        });
-        this.#border_color_b_Signal=this.#settings.connect('changed::border-color-b', () => {
-            this.#buttonFactory.init();
-            this.#displayManager.resetAllButtonStyles();
-        });
-        this.#border_color_a_Signal=this.#settings.connect('changed::border-color-a', () => {
+        this.#border_color_signal=this.#settings.connect('changed::border-color', () => {
             this.#buttonFactory.init();
             this.#displayManager.resetAllButtonStyles();
         });
@@ -260,56 +213,19 @@ export class SettingsConnector{
             this.#lineHeightSignal = 0;
         }
 
-
-        if (this.#text_color_r_Signal) {
-            this.#settings.disconnect(this.#text_color_r_Signal);
-            this.#text_color_r_Signal = 0;
-        }
-        if (this.#text_color_g_Signal) {
-            this.#settings.disconnect(this.#text_color_g_Signal);
-            this.#text_color_g_Signal = 0;
-        }
-        if (this.#text_color_b_Signal) {
-            this.#settings.disconnect(this.#text_color_b_Signal);
-            this.#text_color_b_Signal = 0;
-        }
-        if (this.#text_color_a_Signal) {
-            this.#settings.disconnect(this.#text_color_a_Signal);
-            this.#text_color_a_Signal = 0;
+        if (this.#text_color_signal) {
+            this.#settings.disconnect(this.#text_color_signal);
+            this.#text_color_signal = 0;
         }
 
-        if (this.#bg_color_r_Signal) {
-            this.#settings.disconnect(this.#bg_color_r_Signal);
-            this.#bg_color_r_Signal = 0;
-        }
-        if (this.#bg_color_g_Signal) {
-            this.#settings.disconnect(this.#bg_color_g_Signal);
-            this.#bg_color_g_Signal = 0;
-        }
-        if (this.#bg_color_b_Signal) {
-            this.#settings.disconnect(this.#bg_color_b_Signal);
-            this.#bg_color_b_Signal = 0;
-        }
-        if (this.#bg_color_a_Signal) {
-            this.#settings.disconnect(this.#bg_color_a_Signal);
-            this.#bg_color_a_Signal = 0;
+        if (this.#bg_color_signal) {
+            this.#settings.disconnect(this.#bg_color_signal);
+            this.#bg_color_signal = 0;
         }
 
-        if (this.#border_color_r_Signal) {
-            this.#settings.disconnect(this.#border_color_r_Signal);
-            this.#border_color_r_Signal = 0;
-        }
-        if (this.#border_color_g_Signal) {
-            this.#settings.disconnect(this.#border_color_g_Signal);
-            this.#border_color_g_Signal = 0;
-        }
-        if (this.#border_color_b_Signal) {
-            this.#settings.disconnect(this.#border_color_b_Signal);
-            this.#border_color_b_Signal = 0;
-        }
-        if (this.#border_color_a_Signal) {
-            this.#settings.disconnect(this.#border_color_a_Signal);
-            this.#border_color_a_Signal = 0;
+        if (this.#border_color_signal) {
+            this.#settings.disconnect(this.#border_color_signal);
+            this.#border_color_signal = 0;
         }
 
         if (this.#border_radius_Signal) {

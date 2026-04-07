@@ -2,7 +2,7 @@
 
 <p>
 A GNOME Shell extension that displays buttons along the screen edge for each minimized window. Click on them to reopen the window.<br><br>
-Includes a settings-page, that lets you customise it.
+Includes a settings-page, that lets you customise it:
 </p>
 
 <h3>Features & Settings</h3>
@@ -32,10 +32,8 @@ Includes a settings-page, that lets you customise it.
 
 <h3>Known Issues</h3>
 <ul>
-    <li>After reloading the extension (turning it off and on), the focused window at that time isn't detected. Autohide works only after you change focus to another window.</li>
-    <li>After suspend, sometimes autohideHelper is null. Cant replicate well...</li>
     <li>Changing Screen orientation: this would need a "stick to smaller/bigger edge, prefer top/left", etc. option for some touch devices</li>
-    <li><b>Compatibility:</b> using this together with just perfection, dash to dock and v-shell. Trying to play nice, but </li>
+    <li><b>Compatibility:</b> using this together with just perfection, dash to dock and v-shell. Trying to play nice, but:</li>
     <ul>
         <li>fighting dash to dock for window open and close animations</li>
         <li>think im triggering an error in another extension with something else. Cant really replicate right now, need to investigate further</li>

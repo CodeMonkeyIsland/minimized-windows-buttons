@@ -12,6 +12,7 @@
 import St from 'gi://St';
 import Clutter from 'gi://Clutter';
 import Meta from 'gi://Meta';
+import GLib from 'gi://GLib';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
@@ -41,19 +42,19 @@ export class DisplayManager{
     #oldFocusWindow=null;
     #leaveSpaceContainer=null;
 
-    //save some settings-dependent values for easier access
+    //save some settings-dependent values for quicker access
     #useScrollPiping=false;
     #autohideActive=false;
     #autohide_always=false;
     //public (shared with coreLogic)
-    isHorizontal=false; //true for pos top&bottom, need this in coreLogic too
+    isHorizontal=false; //true for pos top&bottom
 
     //for touch scroll hack
     #dndStartX=null;
     #dndStartY=null;
     #buttonMargin=0; //setting at drag start
 
-    //autohide for touch
+    //autohide for touch hack(no leave event...)
     //nasty: global event hook
     #globalEventSignal=null;
 
@@ -85,7 +86,10 @@ export class DisplayManager{
 
         //decide what to do inside the function, calling it at any cover-behaviour
         this.#focusSignal = global.display.connect('notify::focus-window', () => {
+            //when opening a window, this hook starts before the window is not null!
+
             this.focusWindowChange();
+
         });
 
         this.#monitorResizeSignal = Main.layoutManager.connect('monitors-changed', () => {
@@ -113,6 +117,12 @@ export class DisplayManager{
         if (this.#settings.get_boolean('global-event-hook') ){
             this.setupGlobalEventHook();
         }
+
+        //for detecting the extensions-window when turning on/off
+        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            this.focusWindowChange(); 
+            return GLib.SOURCE_REMOVE;
+        });
 	}
 
 
@@ -386,13 +396,16 @@ export class DisplayManager{
     }
 
     focusWindowChange(){
-        this.#autohideHelper.focusWindowChange(this, this.#autohideActive, this.#oldFocusWindow);
+        this.#autohideHelper.focusWindowChange(this, this.#autohideActive);
     }
     setResizeSignal(_signal){
         this.#resizeSignal=_signal;
     }
     setPositionSignal(_signal){
         this.#positionSignal=_signal;
+    }
+    setOldFocusWindow(win) {
+        this.#oldFocusWindow = win;
     }
 
     //this is a hover detect container. show buttons on hover! (wrong name)

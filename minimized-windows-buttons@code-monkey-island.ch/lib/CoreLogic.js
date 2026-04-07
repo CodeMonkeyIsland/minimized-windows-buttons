@@ -19,7 +19,6 @@ import St from 'gi://St';
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import Shell from 'gi://Shell';
-
 import GLib from 'gi://GLib';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -181,6 +180,7 @@ export class CoreLogic{
         }
     }
 
+    //might need to disconnect signals on oldfocuswindow...(dragandresize)
     #unwatchWindow(metaWindow) {
         const ids = this.#windowSignals.get(metaWindow);
         if (!ids) {return;}
@@ -271,9 +271,8 @@ export class CoreLogic{
                 return DND.DragDropResult.CONTINUE;
                 //return DND.DragMotionResult.MOVE
             },
-            handleDragOut: () => { //not working?!
-                console.log('gigsgisg')
-                //this.#displayManager.clearPlaceholder();
+            handleDragOut: () => { 
+                //not working?!
             },
             acceptDrop: (source, actor, x, y, time) => {
                 this.#dragSuccess=true;

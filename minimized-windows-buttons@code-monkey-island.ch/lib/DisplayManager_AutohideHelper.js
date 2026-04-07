@@ -46,9 +46,9 @@ export default class DisplayManager_AutohideHelper{
     #isContainerCoveredByActiveWindow(_scrollContainer) {
         if (!_scrollContainer || !_scrollContainer.get_parent()) {return false;}
 
-        let activeWin = global.display.get_focus_window();
+        let activeWin = this.#getFocusWindow();
         if (!activeWin) {
-            console.log('no active window');
+            console.log('[Minimized Windows Buttons] Warning: no active window');
             return false;
         }
 
@@ -102,12 +102,13 @@ export default class DisplayManager_AutohideHelper{
         }
     }
 
-    focusWindowChange(_displayManager, _autohideActive, _oldFocusWindow){
+    focusWindowChange(_displayManager, _autohideActive){
         if (_autohideActive){
             //the newly focussed window
-            let win = global.display.get_focus_window();
+            let win = this.#getFocusWindow();
+
             if (!win) {
-                console.log('no focus window');
+                console.log('[minimized Windows Buttons] WARNING: no focus window');
                 return false;
             }
             
@@ -127,7 +128,10 @@ export default class DisplayManager_AutohideHelper{
                 })
             );
 
-            _oldFocusWindow=win;
+            //do i also need a signal on destroy()? --> cleaning that up in coreLogic
+
+            _displayManager.setOldFocusWindow(win);
+
             //going back here bacause lazyness
              _displayManager.updateVisibilityActiveWindow();
         }
@@ -203,5 +207,22 @@ export default class DisplayManager_AutohideHelper{
                 localY <= (box.y2 - box.y1);
     }
 
+    #getFocusWindow(){
+
+        //fails on a new window
+        let win = global.display.get_focus_window();
+
+        if (!win){
+            const workspace = global.workspace_manager.get_active_workspace();
+            const windows = workspace.list_windows();
+            if (windows.length === 0) {
+                console.log('[Minimized Windows Buttons] getFocusWindow: No windows in current workspace!');
+                return null;
+            };
+            win=windows.sort((a, b) => b.get_user_time() - a.get_user_time())[0];
+        }
+
+        return win;
+    }
 
 }

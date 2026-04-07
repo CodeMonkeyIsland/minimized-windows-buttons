@@ -15,7 +15,7 @@ Touch support: With the right settings, the extension is actually becoming quite
 
 - enable drag scroll hack(Settings/Misc.): use button drag movement to control container scroll, since touch scroll is not working on the button-container. 
 
-- autohide global event hook(Settings/Misc.): for autohide on touch devices. insanity, but works ok.
+- autohide global event hook(Settings/Misc.): for autohide on touch devices. its insanity, but works fine.
 
 - Autohide: set detect container size (Settings/Cover Options). Size 1 works for nicely calibrated touch display, especially with a pen. Adjust size if that is not working for you.
 

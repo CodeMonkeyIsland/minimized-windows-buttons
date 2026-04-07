@@ -20,19 +20,9 @@ export class ButtonFactory{
     #iconHeight=0;
     #lineHeight=0;
 
-    //waaaay too many vars and hooks. make 12 to 3 in prefs, have additional rgba var in schema->string?
-    #text_color_r=0;
-    #text_color_g=0;
-    #text_color_b=0;
-    #text_color_a=0.0;
-    #bg_color_r=0;
-    #bg_color_g=0;
-    #bg_color_b=0;
-    #bg_color_a=0.0;
-    #border_color_r=0;
-    #border_color_g=0;
-    #border_color_b=0;
-    #border_color_a=0.0;
+    #text_color='';
+    #bg_color='';
+    #border_color='';
 
     #border_radius=0;
     #font_weight=0;
@@ -43,31 +33,20 @@ export class ButtonFactory{
         this.settings=_settings;
     }
 
+    //not really an init, more a reset to settings.
     init(){
         this.#buttonWidth=this.settings.get_int('button-width');
         this.#buttonHeight=this.settings.get_int('button-height');
         this.#iconHeight=this.settings.get_int('icon-height');
         this.#lineHeight=this.settings.get_int('line-height');
 
-        this.#text_color_r=this.settings.get_int('text-color-r');
-        this.#text_color_g=this.settings.get_int('text-color-g');
-        this.#text_color_b=this.settings.get_int('text-color-b');
-        this.#text_color_a=this.settings.get_double('text-color-a');
-
-        this.#bg_color_r=this.settings.get_int('bg-color-r');
-        this.#bg_color_g=this.settings.get_int('bg-color-g');
-        this.#bg_color_b=this.settings.get_int('bg-color-b');
-        this.#bg_color_a=this.settings.get_double('bg-color-a');
-
-        this.#border_color_r=this.settings.get_int('border-color-r');
-        this.#border_color_g=this.settings.get_int('border-color-g');
-        this.#border_color_b=this.settings.get_int('border-color-b');
-        this.#border_color_a=this.settings.get_double('border-color-a');
+        this.#text_color=this.settings.get_string('text-color');
+        this.#bg_color=this.settings.get_string('bg-color');
+        this.#border_color=this.settings.get_string('border-color');
 
         this.#border_radius=this.settings.get_int('border-radius');
         this.#font_weight=this.settings.get_int('font-weight');
         this.#font_weight=Math.round(this.#font_weight / 100) * 100;
-
     }
 
 	getButtonWidth(){
@@ -158,11 +137,11 @@ export class ButtonFactory{
 
         icon.icon_size=this.#iconHeight;
         label.set_style('font-size: '+this.#lineHeight+'px;'+ 
-                        'color: rgba('+this.#text_color_r+','+this.#text_color_g+','+this.#text_color_b+','+this.#text_color_a+'); '+
+                        'color: '+this.#text_color+';'+
                         'font-weight: '+this.#font_weight);
 
-        styleString = styleString+ 'background-color: rgba('+this.#bg_color_r+','+this.#bg_color_g+','+this.#bg_color_b+','+this.#bg_color_a+'); ';
-        styleString = styleString+ 'border-color: rgba('+this.#border_color_r+','+this.#border_color_g+','+this.#border_color_b+','+this.#border_color_a+'); ';
+        styleString = styleString+ 'background-color: '+this.#bg_color+';';
+        styleString = styleString+ 'border-color: '+this.#border_color+';';
         styleString = styleString+ 'border-width: 1px; ';
         styleString = styleString+ 'border-radius: '+this.#border_radius+'px; ';
 
