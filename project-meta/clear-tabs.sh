@@ -9,7 +9,7 @@ if [ -d "$TARGET_DIR" ]; then
     echo "Processing files in $TARGET_DIR..."
     
     find "$TARGET_DIR" -type f | while read -r file; do
-    	
+
     	if expand -t 4 "$file" > "$file.tmp"; then
 	        mv "$file.tmp" "$file"
 	        # trailing whitespaces
@@ -19,12 +19,6 @@ if [ -d "$TARGET_DIR" ]; then
 	        echo "Failed to process: $file"
 	        rm -f "$file.tmp"
 	    fi
-
-        # Convert tabs to 4 spaces using a temporary file
-        expand -t 4 "$file" > "$file.tmp" && mv "$file.tmp" "$file"
-        
-        # Also remove trailing whitespace (another common reviewer requirement)
-        sed -i 's/[[:space:]]*$//' "$file"
         
         echo "Converted: $file"
     done

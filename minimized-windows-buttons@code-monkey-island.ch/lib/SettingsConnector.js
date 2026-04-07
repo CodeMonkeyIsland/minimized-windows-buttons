@@ -1,9 +1,9 @@
 /**
  * self-explanatory, needs no imports
- * 
+ *
  * just 2 real functions: connect & disconnect
  * other classes can access settings, this is for settings-hooks
- * 
+ *
  * need to cut down the number of button-style vars
  */
 
@@ -41,20 +41,20 @@ export class SettingsConnector{
 
     #global_event_signal=0;
 
-	constructor(_settings, _buttonFactory){
-		this.#settings=_settings;
+    constructor(_settings, _buttonFactory){
+        this.#settings=_settings;
         this.#buttonFactory=_buttonFactory;
-	}
+    }
 
-	setDisplayManager(_displayManager){
-		this.#displayManager=_displayManager;
-	}
+    setDisplayManager(_displayManager){
+        this.#displayManager=_displayManager;
+    }
 
     setCoreLogic(_coreLogic){
         this.#coreLogic=_coreLogic;
     }
 
-	connect(){
+    connect(){
 
         this.#global_event_signal=this.#settings.connect('changed::global-event-hook', () => {
             const isEnabled = this.#settings.get_boolean('global-event-hook');
@@ -65,14 +65,14 @@ export class SettingsConnector{
             }
         });
 
-		this.#coverSignal=this.#settings.connect('changed::cover-behaviour', () => {
+        this.#coverSignal=this.#settings.connect('changed::cover-behaviour', () => {
             this.#displayManager.setCoverOption();
             this.#displayManager.setupAutohideDetector();
             //trigger reset and update in autohide
             this.#displayManager.updateVisibilityActiveWindow();
 
         });
-        
+
         this.#autohideSizeSignal=this.#settings.connect('changed::autohide-container-size', () => {
             this.#displayManager.setAutohideDefaultSize();
         });
@@ -154,9 +154,9 @@ export class SettingsConnector{
             this.#displayManager.setCoverOption();
         });
 
-	}
+    }
 
-	disconnect(){
+    disconnect(){
 
         if (this.#global_event_signal) {
             this.#settings.disconnect(this.#global_event_signal);
@@ -245,6 +245,6 @@ export class SettingsConnector{
 
         this.#settings=null;
 
-	}
-    
+    }
+
 }

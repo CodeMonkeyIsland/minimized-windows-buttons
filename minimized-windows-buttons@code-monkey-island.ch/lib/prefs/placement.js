@@ -8,16 +8,16 @@ import UIElementAdder from './UIElementAdder.js';
 
 export default class PlacementPage{
 
-	#settings=null;
-	page=null;
+    #settings=null;
+    page=null;
 
-	constructor(_settings){
+    constructor(_settings){
 
         let uiElementAdder=new UIElementAdder(_settings);
 
-		this.#settings=_settings;
+        this.#settings=_settings;
 
-		this.page = new Adw.PreferencesPage({
+        this.page = new Adw.PreferencesPage({
             title: _('Placement'),
             icon_name: 'sidebar-show-right-symbolic',
         });
@@ -25,7 +25,7 @@ export default class PlacementPage{
         const group = new Adw.PreferencesGroup({
             title: _('Placement'),
         });
-        this.page.add(group); 
+        this.page.add(group);
 
 
         //----------------------------------position: top, bottom, left and right-------------------------------------
@@ -49,31 +49,31 @@ export default class PlacementPage{
 
 
         //------------------------------sliders for horizontal/vertical and button margins----------------------------
-        uiElementAdder.addIntSlider(group, 
-                                    0, 
-                                    100, 
-                                    1, 
-                                    1, 
-                                    'Button container: vertical margin', 
-                                    'Vertical spacing between buttoncontainer and screen edge', 
+        uiElementAdder.addIntSlider(group,
+                                    0,
+                                    100,
+                                    1,
+                                    1,
+                                    'Button container: vertical margin',
+                                    'Vertical spacing between buttoncontainer and screen edge',
                                     'margin-vertical');
 
-        uiElementAdder.addIntSlider(group, 
-                                    0, 
-                                    100, 
-                                    1, 
-                                    1, 
-                                    'Button container: horizontal margin', 
-                                    'Horizontal spacing between buttoncontainer and screen edge', 
+        uiElementAdder.addIntSlider(group,
+                                    0,
+                                    100,
+                                    1,
+                                    1,
+                                    'Button container: horizontal margin',
+                                    'Horizontal spacing between buttoncontainer and screen edge',
                                     'margin-horizontal');
 
-        uiElementAdder.addIntSlider(group, 
-                                    0, 
-                                    20, 
-                                    1, 
-                                    1, 
-                                    'Button margins', 
-                                    'margin between buttons. Vertical for position: left and right, horizontal for top and bottom', 
+        uiElementAdder.addIntSlider(group,
+                                    0,
+                                    20,
+                                    1,
+                                    1,
+                                    'Button margins',
+                                    'margin between buttons. Vertical for position: left and right, horizontal for top and bottom',
                                     'margin-buttons');
     }
 }

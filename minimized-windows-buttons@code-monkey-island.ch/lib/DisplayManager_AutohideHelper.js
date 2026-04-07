@@ -1,17 +1,17 @@
 /**
  * little helper for DisplayManager autohide functions
  * just for reducing LOC in DisplayManager, make it more readable
- * 
+ *
  * functions of the same name in DisplayManager get piped here
- * 
+ *
  * object gets construced during DisplayManager.init(), nulled at DM.close()
  * only one object, like a singleton. (but not enforcing it)
- * 
- * no hooks saved here, settings-connected and hooked vars get passed 
+ *
+ * no hooks saved here, settings-connected and hooked vars get passed
  * down in the piping functions as needed.
- * 
+ *
  * this means: for now, no signals are to be set here -> public signal setters in piping section of DM
- * 
+ *
  */
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -20,11 +20,11 @@ import GLib from 'gi://GLib';
 
 export default class DisplayManager_AutohideHelper{
 
-	constructor(){
-		//do nothing, pass down everything needed in function calls
-	}
+    constructor(){
+        //do nothing, pass down everything needed in function calls
+    }
 
-	updateVisibilityActiveWindow(_scrollContainer, _autohide_active, _autohide_always) {
+    updateVisibilityActiveWindow(_scrollContainer, _autohide_active, _autohide_always) {
 
         if (!_scrollContainer || !_scrollContainer.get_parent()){return;};
 
@@ -111,7 +111,7 @@ export default class DisplayManager_AutohideHelper{
                 console.log('[minimized Windows Buttons] WARNING: no focus window');
                 return false;
             }
-            
+
             _displayManager.disconnectWindowDragAndRezizeSignals();
 
             _displayManager.setResizeSignal(
@@ -193,17 +193,17 @@ export default class DisplayManager_AutohideHelper{
     }
 
     //should really decide on some general policy
-    //on what coords to use everywhere... 
+    //on what coords to use everywhere...
     pointerInside(actor, event) {
-        
+
         const [x, y] = event.get_coords();
         let [success, localX, localY] = actor.transform_stage_point(x, y);
         if (!success) {return false;}
 
         let box = actor.get_allocation_box();
-        return localX >= 0 && 
-                localX <= (box.x2 - box.x1) && 
-                localY >= 0 && 
+        return localX >= 0 &&
+                localX <= (box.x2 - box.x1) &&
+                localY >= 0 &&
                 localY <= (box.y2 - box.y1);
     }
 

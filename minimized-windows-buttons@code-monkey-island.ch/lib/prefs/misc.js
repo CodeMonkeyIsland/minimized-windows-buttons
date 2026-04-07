@@ -6,21 +6,24 @@ import { gettext as _ } from 'resource:///org/gnome/Shell/Extensions/js/extensio
 
 export default class MiscPage{
 
-	#settings=null;
-	page=null;
+    #settings=null;
+    page=null;
 
-	constructor(_settings){
-		this.#settings=_settings;
+    constructor(_settings){
+        this.#settings=_settings;
 
-		this.page = new Adw.PreferencesPage({
+        this.page = new Adw.PreferencesPage({
             title: _('Misc.'),
             icon_name: 'view-more-symbolic',
         });
 
+
+
+
         const group = new Adw.PreferencesGroup({
             title: _('Workspace and Overview behaviour'),
         });
-        this.page.add(group); 
+        this.page.add(group);
 
         // show in overview?
         const row = new Adw.SwitchRow({
@@ -45,7 +48,7 @@ export default class MiscPage{
         const group2 = new Adw.PreferencesGroup({
             title: _('Button Drag and Drop'),
         });
-        this.page.add(group2); 
+        this.page.add(group2);
 
         const row3 = new Adw.SwitchRow({
             title: _('snapback'),
@@ -60,7 +63,7 @@ export default class MiscPage{
         const group3 = new Adw.PreferencesGroup({
             title: _('Touch Support'),
         });
-        this.page.add(group3); 
+        this.page.add(group3);
 
         const row4 = new Adw.SwitchRow({
             title: _('drag-scroll hack'),

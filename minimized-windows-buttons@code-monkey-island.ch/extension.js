@@ -18,7 +18,7 @@ export default class MinimizedButtonsExtension extends Extension {
     enable(){
         this.#settings=this.getSettings();
         this.#buttonFactory=new ButtonFactory(this.#settings);
-        
+
         this.#coreLogic= new CoreLogic(this.#settings, this.#buttonFactory);
         this.#settingsConnector= new SettingsConnector(this.#settings, this.#buttonFactory);
         this.#displayManager = new DisplayManager(this.#settings, this.#buttonFactory, this.#coreLogic);

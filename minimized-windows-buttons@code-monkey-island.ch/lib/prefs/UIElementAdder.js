@@ -16,7 +16,7 @@ export default class UIElementAdder{
         this.#settings=_settings;
     }
 
-	addIntSlider(group, minValue, maxValue, stepIncrement, pageIncrement, titleValue, subtitleValue, varName){
+    addIntSlider(group, minValue, maxValue, stepIncrement, pageIncrement, titleValue, subtitleValue, varName){
         const row = new Adw.ActionRow({
             title: titleValue,
             subtitle: subtitleValue,
@@ -59,7 +59,7 @@ export default class UIElementAdder{
      * for background, text and border color
      */
     addColorSection(colorExpander, varName){
-        
+
         const entryBox = new Adw.ActionRow({ title: _('RGBA Value') });
 
         const rgbaLabel = new Gtk.Label({
@@ -156,7 +156,7 @@ export default class UIElementAdder{
         const g = this.#settings.get_int(varName+'-g');
         const b = this.#settings.get_int(varName+'-b');
         const a = this.#settings.get_double(varName+'-a').toFixed(2);
-        
+
         const rgbaString = 'rgba('+r+','+g+','+b+','+a+')';
         this.#settings.set_string(varName, rgbaString);
     }

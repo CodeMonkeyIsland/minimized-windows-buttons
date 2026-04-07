@@ -1,12 +1,12 @@
 /**
  * Here, all graphical things are done
- * 
+ *
  * Basically all Operations on the whole container and all buttons
  * Operations inside the container (adding/removing buttons, button hooks, reordering, workspacevisibility ...)
  * are done in coreLogic
- * 
- * autohide outsourced to DisplayManager_AutohideHelper. Functions of the same name get piped to it. 
- * 
+ *
+ * autohide outsourced to DisplayManager_AutohideHelper. Functions of the same name get piped to it.
+ *
  */
 
 import St from 'gi://St';
@@ -59,13 +59,13 @@ export class DisplayManager{
     #globalEventSignal=null;
 
 
-	constructor(_settings,  _buttonFactory, _coreLogic){
-		this.#coreLogic=_coreLogic;
-		this.#settings=_settings;
+    constructor(_settings,  _buttonFactory, _coreLogic){
+        this.#coreLogic=_coreLogic;
+        this.#settings=_settings;
         this.#buttonFactory=_buttonFactory;
-	}
+    }
 
-	init(){
+    init(){
         this.#autohideHelper=new DisplayManager_AutohideHelper();
 
         this.#scrollContainer = new St.ScrollView({
@@ -120,13 +120,13 @@ export class DisplayManager{
 
         //for detecting the extensions-window when turning on/off
         GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-            this.focusWindowChange(); 
+            this.focusWindowChange();
             return GLib.SOURCE_REMOVE;
         });
-	}
+    }
 
 
-	close(){
+    close(){
         this.disconnectGlobalEventHook();
         this.disconnectAutohideSignals();
         this.disconnectWindowDragAndRezizeSignals();
@@ -164,7 +164,7 @@ export class DisplayManager{
         this.#coreLogic=null;
 
         this.#autohideHelper=null;
-	}
+    }
 
 
     //---------------------------------------------------------------------------------------------------------------------
@@ -290,7 +290,7 @@ export class DisplayManager{
         this.updateVisibilityActiveWindow();
 
         this.setScrollcontainerReactivity();
-        
+
     }
 
 
@@ -375,14 +375,14 @@ export class DisplayManager{
         this.#leaveSpaceContainer=null;
     }
 
-    
+
     //---------------------------------------------------------------------------------------------------------------------
     //-----------------------------------------autohide--------------------------------------------------------------------
     //---------------------------------------------------------------------------------------------------------------------
     /**
      * just trying to reduce LOC in this file, DM has always been too big and is not getting any smaller
      * leaving only piping functions here
-     * 
+     *
      * idea: keep all signals in the 3 main classes
      * Problem: setting connect/disconnect-signals in helper. solution: public setSignal and disconnect functions here
      */
@@ -438,7 +438,7 @@ export class DisplayManager{
     }
 
     /**
-     * if dragged inside the container, scroll with the drag movement 
+     * if dragged inside the container, scroll with the drag movement
      * if dragged outside the container, dont scroll (dnd reordering)
      */
     dragScrollHack(x,y){
@@ -473,9 +473,9 @@ export class DisplayManager{
      */
     #isInsideButtonContainer(x,y){
         const rect = this.#scrollContainer.get_transformed_extents();
-        return x+this.#buttonMargin >= rect.origin.x && 
-               x-this.#buttonMargin <= rect.origin.x + rect.size.width && 
-               y+this.#buttonMargin >= rect.origin.y && 
+        return x+this.#buttonMargin >= rect.origin.x &&
+               x-this.#buttonMargin <= rect.origin.x + rect.size.width &&
+               y+this.#buttonMargin >= rect.origin.y &&
                y-this.#buttonMargin <= rect.origin.y + rect.size.height;
     }
 
@@ -553,7 +553,7 @@ export class DisplayManager{
     //set all to placeholder-position
     resetAllOpenWindowIconPositions(){
         for (const actor of global.get_window_actors()){
-            if (!actor.meta_window.minimized){            
+            if (!actor.meta_window.minimized){
                 this.setWindowAnimationPositionOpen(actor.meta_window)
             }
         }
@@ -587,8 +587,8 @@ export class DisplayManager{
     //open windows, set animation position to next free slot in contianer
     setWindowAnimationPositionOpen(metaWindow){
         let btn=this.#coreLogic.placeholderButton;
-        btn.get_allocation_box(); 
-        
+        btn.get_allocation_box();
+
         let [x, y] = btn.get_transformed_position();
         let [w, h] = btn.get_transformed_size();
         this.setIconGeometry(x,y,w,h,metaWindow);
@@ -610,9 +610,9 @@ export class DisplayManager{
 
             if (!this.#autohideActive){return Clutter.EVENT_PROPAGATE;}
 
-            if (event.type() === Clutter.EventType.BUTTON_PRESS || 
+            if (event.type() === Clutter.EventType.BUTTON_PRESS ||
                 event.type() === Clutter.EventType.TOUCH_BEGIN) {
-                
+
                 if (!this.#autohideHelper.pointerInside(this.#scrollContainer, event)) {
                     //lazy
                     this.updateVisibilityActiveWindow();

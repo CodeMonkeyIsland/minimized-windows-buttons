@@ -8,16 +8,16 @@ import UIElementAdder from './UIElementAdder.js';
 
 export default class CoverOptionsPage{
 
-	#settings=null;
-	page=null;
+    #settings=null;
+    page=null;
 
-	constructor(_settings){
+    constructor(_settings){
 
         let uiElementAdder=new UIElementAdder(_settings);
 
-		this.#settings=_settings;
+        this.#settings=_settings;
 
-		this.page = new Adw.PreferencesPage({
+        this.page = new Adw.PreferencesPage({
             title: _('Cover Options'),
             icon_name: 'focus-windows-symbolic',
         });
@@ -62,21 +62,21 @@ export default class CoverOptionsPage{
         });
         this.page.add(group1);
 
-        uiElementAdder.addIntSlider(group1, 
-                                    0, 
-                                    50, 
-                                    1, 
-                                    1, 
-                                    'autohide/autohide always: detect container size', 
-                                    'how close to the edge you have to put the cursor in order to show the buttons when auto-hidden.', 
+        uiElementAdder.addIntSlider(group1,
+                                    0,
+                                    50,
+                                    1,
+                                    1,
+                                    'autohide/autohide always: detect container size',
+                                    'how close to the edge you have to put the cursor in order to show the buttons when auto-hidden.',
                                     'autohide-container-size');
-        uiElementAdder.addIntSlider(group1, 
-                                    0, 
-                                    50, 
-                                    1, 
-                                    1, 
-                                    'Leave space: margin', 
-                                    'spacing between the edge of maximized windows and the buttons', 
+        uiElementAdder.addIntSlider(group1,
+                                    0,
+                                    50,
+                                    1,
+                                    1,
+                                    'Leave space: margin',
+                                    'spacing between the edge of maximized windows and the buttons',
                                     'leave-space-margin');
-	}
+    }
 }

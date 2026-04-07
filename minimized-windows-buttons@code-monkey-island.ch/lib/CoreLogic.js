@@ -2,17 +2,17 @@
  * CoreLogic is for watching windows, getting ButtonFactory to make the Buttons
  * AND doing all button operations within the container (removing, adding, reordering and
  * showing according to workspace)
- * 
+ *
  * All button-hooks are to be set here.
- * 
+ *
  * everything done on the whole container and on every Button is supposed to be done in
  * DisplayManager (the Placement& Cover-Options stuff, stacking, styling after initial production, etc.)
- * 
+ *
  * need to share:
  * - the container with Displaymanager (public here)
  * - isHorizontal from DisplayManager (public there)
  * - windowButtons with displaymanager for resetAllButtonwindowIconPositions() -> public getter here
- * 
+ *
  */
 
 import St from 'gi://St';
@@ -34,12 +34,12 @@ export class CoreLogic{
     #buttonFactory=null;
 
     #displayManager=null;
-	
-	/**
-	 * container containing buttons. DisplayManager places it into a scrollContainer.
-	 * Placement, show/hide is done with scrollContainer, but
-	 * DisplayManager manipulates vertical/horizontal button stacking in this container
-	 */
+
+    /**
+     * container containing buttons. DisplayManager places it into a scrollContainer.
+     * Placement, show/hide is done with scrollContainer, but
+     * DisplayManager manipulates vertical/horizontal button stacking in this container
+     */
     container=null;
 
     #windowSignals=null;
@@ -54,23 +54,23 @@ export class CoreLogic{
 
     placeholderButton=null;
 
-	constructor(_settings, _buttonFactory){
-		this.#windowSignals=new Map();
+    constructor(_settings, _buttonFactory){
+        this.#windowSignals=new Map();
         this.#windowButtons=new Map();
         this.#windowWorkspaces=new Map();
         this.#settings=_settings;
         this.#buttonFactory=_buttonFactory;
-	}
+    }
 
-	setDisplayManager(_displayManager){
-		this.#displayManager=_displayManager;
-	}
+    setDisplayManager(_displayManager){
+        this.#displayManager=_displayManager;
+    }
 
     getWindowButtons(){
         return this.#windowButtons;
     }
 
-	init(){
+    init(){
 
         this.#setupButtonContainer();
 
@@ -99,9 +99,9 @@ export class CoreLogic{
             'active-workspace-changed',
             () => this.setWorkspaceButtonVisibility()
         );
-	}
+    }
 
-	close(){
+    close(){
         this.#clearPlaceholder();
 
         if (this.#sessionSignal) {
@@ -143,16 +143,16 @@ export class CoreLogic{
             this.container._delegate = null;
             this.container.destroy();
             this.container = null;
-        } 
-	}
+        }
+    }
 
 
-	#watchWindow(metaWindow) {
+    #watchWindow(metaWindow) {
         if (!metaWindow || this.#windowSignals.has(metaWindow)){
             console.log('[Minimized Windows Buttons] WARNING: watchWindow early return!');
             return;
         }
-        
+
         const minimizedId = metaWindow.connect('notify::minimized', () => {
             if (metaWindow.minimized) {
                 this.#ensureButton(metaWindow);
@@ -271,7 +271,7 @@ export class CoreLogic{
                 return DND.DragDropResult.CONTINUE;
                 //return DND.DragMotionResult.MOVE
             },
-            handleDragOut: () => { 
+            handleDragOut: () => {
                 //not working?!
             },
             acceptDrop: (source, actor, x, y, time) => {
@@ -302,7 +302,7 @@ export class CoreLogic{
         /**
          * important: use ()=>{} function-define-structure to use "this"
          * why? because thats just the way it is in js. its nice to have this here.
-         * 
+         *
          * normal hook on drag begin
          */
         btn._draggable.connect('drag-begin', () => {
@@ -318,8 +318,8 @@ export class CoreLogic{
 
         /**
          * need to overwrite this for snapback-location on "failed" drop (outside buttoncontainer)
-         * seems the simplest solution right now, 
-         * 
+         * seems the simplest solution right now,
+         *
          * TODO: maybe for not-snapback (open window) use cursor xy and scale 1?
          */
         btn._draggable._getRestoreLocation = () => {
@@ -353,7 +353,7 @@ export class CoreLogic{
             }
 
             _originalUpdate.call(btn._draggable, event);//do i still need this?
-            
+
             this.reorderButtons(null, x, y);
         };
 
@@ -384,16 +384,16 @@ export class CoreLogic{
                     const [px, py] = global.get_pointer();
                     const rect = new Mtk.Rectangle({ x: px, y: py, width: 1, height: 1 });
                     const monitorIndex = global.display.get_monitor_index_for_rect(rect);
-                    
+
                     if (monitorIndex !== -1) {
                         const monitorGeo = global.display.get_monitor_geometry(monitorIndex);
-                        const windowRect = metaWindow.get_buffer_rect(); 
-                        
+                        const windowRect = metaWindow.get_buffer_rect();
+
                         const newX = monitorGeo.x + (monitorGeo.width - windowRect.width) / 2;
                         const newY = monitorGeo.y + (monitorGeo.height - windowRect.height) / 2;
 
                         metaWindow.move_frame(true, newX, newY);
-                        
+
                         let targetWorkspace = global.workspace_manager.get_active_workspace();
                         metaWindow.change_workspace(targetWorkspace);
 
@@ -440,7 +440,7 @@ export class CoreLogic{
             this.container.set_child_at_index(this.placeholderButton, hoveredIndex);
 
         //not the placeholder, but the real button, dropped into container
-        }else{ 
+        }else{
             this.#putButtonInPlace(btn);
             this.#displayManager.resetAllButtonwindowIconPositions();
         }

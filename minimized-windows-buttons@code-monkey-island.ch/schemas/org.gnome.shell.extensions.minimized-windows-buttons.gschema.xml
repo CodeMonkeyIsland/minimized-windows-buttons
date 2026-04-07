@@ -124,7 +124,7 @@
       <range min="0" max="255"/>
       <summary>background color: g</summary>
     </key>
-    
+
     <key name="bg-color-b" type="i">
       <default>60</default>
       <range min="0" max="255"/>
@@ -148,7 +148,7 @@
       <range min="0" max="255"/>
       <summary>background color: g</summary>
     </key>
-    
+
     <key name="text-color-b" type="i">
       <default>250</default>
       <range min="0" max="255"/>
@@ -172,7 +172,7 @@
       <range min="0" max="255"/>
       <summary>background color: g</summary>
     </key>
-    
+
     <key name="border-color-b" type="i">
       <default>250</default>
       <range min="0" max="255"/>

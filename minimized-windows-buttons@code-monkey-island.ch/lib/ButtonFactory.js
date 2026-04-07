@@ -16,7 +16,7 @@ export class ButtonFactory{
 
     //setting them on init now
     #buttonWidth=0;
-	#buttonHeight=0;
+    #buttonHeight=0;
     #iconHeight=0;
     #lineHeight=0;
 
@@ -27,9 +27,9 @@ export class ButtonFactory{
     #border_radius=0;
     #font_weight=0;
 
-	settings=null;
+    settings=null;
 
-	constructor(_settings){
+    constructor(_settings){
         this.settings=_settings;
     }
 
@@ -49,16 +49,16 @@ export class ButtonFactory{
         this.#font_weight=Math.round(this.#font_weight / 100) * 100;
     }
 
-	getButtonWidth(){
-		return this.#buttonWidth;
-	}
+    getButtonWidth(){
+        return this.#buttonWidth;
+    }
 
-	getButtonHeight(){
-		return this.#buttonHeight;
-	}
+    getButtonHeight(){
+        return this.#buttonHeight;
+    }
 
-	makeButton(metaWindow){
-		let gicon = this.#getWindowGicon(metaWindow);
+    makeButton(metaWindow){
+        let gicon = this.#getWindowGicon(metaWindow);
         let icon = new St.Icon({ gicon, style_class: 'button-icon' });
 
         let label = new St.Label({
@@ -89,7 +89,7 @@ export class ButtonFactory{
         this.styleButton(button);
 
         return button;
-	} 
+    }
 
     makePlaceholderButton(){
         let gicon = new Gio.ThemedIcon({ name: 'application-x-executable' });
@@ -125,8 +125,8 @@ export class ButtonFactory{
         button.set_opacity(0);
 
         return button;
-    } 
- 
+    }
+
     styleButton(btn){
         let styleString='';
         btn.width=this.#buttonWidth;
@@ -136,7 +136,7 @@ export class ButtonFactory{
         let label=btn.get_child_at_index(0).get_child_at_index(1);
 
         icon.icon_size=this.#iconHeight;
-        label.set_style('font-size: '+this.#lineHeight+'px;'+ 
+        label.set_style('font-size: '+this.#lineHeight+'px;'+
                         'color: '+this.#text_color+';'+
                         'font-weight: '+this.#font_weight);
 
@@ -155,7 +155,7 @@ export class ButtonFactory{
         btn.set_style(styleString);
     }
 
-	#getWindowGicon(metaWindow) {
+    #getWindowGicon(metaWindow) {
         try{
             let gicon = null;
             let app = null;
