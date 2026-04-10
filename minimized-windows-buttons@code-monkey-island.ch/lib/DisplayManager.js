@@ -86,10 +86,7 @@ export class DisplayManager{
 
         //decide what to do inside the function, calling it at any cover-behaviour
         this.#focusSignal = global.display.connect('notify::focus-window', () => {
-            //when opening a window, this hook starts before the window is not null!
-
             this.focusWindowChange();
-
         });
 
         this.#monitorResizeSignal = Main.layoutManager.connect('monitors-changed', () => {
@@ -605,6 +602,7 @@ export class DisplayManager{
         metaWindow.set_icon_geometry(rect);
     }
 
+    //needed for missing touch scrollcontainer leave AND autohide-detect-container enter event
     setupGlobalEventHook(){
         this.#globalEventSignal= global.stage.connect('captured-event', (stage, event) => {
 
@@ -613,9 +611,15 @@ export class DisplayManager{
             if (event.type() === Clutter.EventType.BUTTON_PRESS ||
                 event.type() === Clutter.EventType.TOUCH_BEGIN) {
 
+                if (this.#autohideHelper.pointerInside(this.#autohide_detect_container , event)){
+                    this.#scrollContainer.show();
+                    return Clutter.EVENT_PROPAGATE;
+                }
+
                 if (!this.#autohideHelper.pointerInside(this.#scrollContainer, event)) {
                     //lazy
                     this.updateVisibilityActiveWindow();
+                    return Clutter.EVENT_PROPAGATE;
                 }
             }
             return Clutter.EVENT_PROPAGATE;

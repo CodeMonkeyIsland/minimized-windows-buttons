@@ -48,7 +48,6 @@ export default class DisplayManager_AutohideHelper{
 
         let activeWin = this.#getFocusWindow();
         if (!activeWin) {
-            console.log('[Minimized Windows Buttons] Warning: no active window');
             return false;
         }
 
@@ -76,6 +75,7 @@ export default class DisplayManager_AutohideHelper{
 
     }
 
+    //not accouting for margins. setting to screen edge
     setAutohideDefaultSize(_settings, _autohideDetectContainer){
         let containerSize=_settings.get_int('autohide-container-size');
         switch (_settings.get_string('position-on-screen')){
@@ -108,7 +108,6 @@ export default class DisplayManager_AutohideHelper{
             let win = this.#getFocusWindow();
 
             if (!win) {
-                console.log('[minimized Windows Buttons] WARNING: no focus window');
                 return false;
             }
 
