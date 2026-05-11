@@ -1,9 +1,9 @@
 Shows a button on the edge of the screen for each minimized window. Click to maximize again.
 
-Includes settings pages that let you customize it:
+Includes settings that let you customize it:
 
 - Position: top, bottom, left and right
-- Cover behaviour: front, leave space, autohide & autohide always
+- Cover behaviour: front, leave space, autohide and autohide always
 - Button Style
 - Margins
 - Show in Overview (or not)
@@ -15,7 +15,7 @@ Touch support: With the right settings, the extension is actually becoming quite
 
 - enable drag scroll hack(Settings/Misc.): use button drag movement to control container scroll, since touch scroll is not working on the button-container. 
 
-- autohide global event hook(Settings/Misc.): for autohide on touch devices. its insanity, but works fine.
+- autohide global event hook(Settings/Misc.): for autohide on touch devices. its insanity, but works fine. But only use it for touch AND autohide.
 
 - Autohide: set detect container size (Settings/Cover Options). Size 1 works for nicely calibrated touch display, especially with a pen. Adjust size if that is not working for you.
 

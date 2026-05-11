@@ -67,10 +67,10 @@ export default class DisplayManager_AutohideHelper{
         };
 
         return !(
-            containerRect.x2 < windowRect.x1 ||
-            containerRect.x1 > windowRect.x2 ||
-            containerRect.y2 < windowRect.y1 ||
-            containerRect.y1 > windowRect.y2
+            containerRect.x2 <= windowRect.x1 ||
+            containerRect.x1 >= windowRect.x2 ||
+            containerRect.y2 <= windowRect.y1 ||
+            containerRect.y1 >= windowRect.y2
         );
 
     }
@@ -146,10 +146,10 @@ export default class DisplayManager_AutohideHelper{
             Main.layoutManager.removeChrome(_autohide_detect_container);
         }
         Main.layoutManager.addChrome(_autohide_detect_container, {
-                affectsInputRegion: false,
                 trackFullscreen: true,
                 affectsStruts: false
         });
+        _autohide_detect_container.set_reactive(true);
 
         if (_autohideActive){
 

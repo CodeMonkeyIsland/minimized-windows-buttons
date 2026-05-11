@@ -123,6 +123,7 @@ export class ButtonFactory{
         this.styleButton(button);
 
         button.set_opacity(0);
+        button.set_reactive(false);
 
         return button;
     }

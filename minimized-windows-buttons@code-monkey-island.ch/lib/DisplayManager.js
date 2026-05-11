@@ -273,10 +273,10 @@ export class DisplayManager{
         }
 
         Main.layoutManager.addChrome(this.#scrollContainer,{
-            affectsInputRegion: affectInput,
             trackFullscreen: true,
             affectsStruts: false
         });
+
 
         this.#scrollContainer.show();
         this.#scrollContainer.queue_relayout();
@@ -523,25 +523,23 @@ export class DisplayManager{
         this.setScrollcontainerReactivity();
     }
 
-    //needs to go into autohide?
-    //WARNING watch out for placeholderButton!!!!
     setScrollcontainerReactivity(){
 
         if (this.#autohideActive){
-            this.#scrollContainer.reactive=true;
+            this.#scrollContainer.set_reactive(true);
         }else{ //front and leave-space
             if (this.#settings.get_string('position-on-screen') == 'top' ||
                 this.#settings.get_string('position-on-screen') == 'bottom'){
                 if (this.#coreLogic.container.width > this.#scrollContainer.width){
-                    this.#scrollContainer.reactive=true;
+                    this.#scrollContainer.set_reactive(true);
                 }else{
-                    this.#scrollContainer.reactive=false;
+                    this.#scrollContainer.set_reactive(false);
                 }
             }else{
                 if (this.#coreLogic.container.height > this.#scrollContainer.height){
-                    this.#scrollContainer.reactive=true;
+                    this.#scrollContainer.set_reactive(true);
                 }else{
-                    this.#scrollContainer.reactive=false;
+                    this.#scrollContainer.set_reactive(false);
                 }
             }
         }
