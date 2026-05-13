@@ -15,6 +15,7 @@ export class SettingsConnector{
     #displayManager=null;
     #buttonFactory=null;
 
+    #global_event_signal=0;
     #coverSignal=0;
     #autohideSizeSignal=0;
     #marginVerticalSignal=0;
@@ -38,8 +39,6 @@ export class SettingsConnector{
     //polling them from coreLogic for now, so no signals needed... but at what cost?
     //#snapbackSignal=0;
     //#dragScrollHackSignal=0;
-
-    #global_event_signal=0;
 
     constructor(_settings, _buttonFactory){
         this.#settings=_settings;
@@ -115,12 +114,12 @@ export class SettingsConnector{
             this.#displayManager.setScrollcontainerReactivity();
         });
 
-        this.#buttonWidthSignal=this.#settings.connect('changed::icon-height', () => {
+        this.#iconHeightSignal=this.#settings.connect('changed::icon-height', () => {
             this.#buttonFactory.init();
             this.#displayManager.resetAllButtonStyles();
         });
 
-        this.#buttonWidthSignal=this.#settings.connect('changed::line-height', () => {
+        this.#lineHeightSignal=this.#settings.connect('changed::line-height', () => {
             this.#buttonFactory.init();
             this.#displayManager.resetAllButtonStyles();
         });
@@ -193,6 +192,11 @@ export class SettingsConnector{
             this.#positionSignal = 0;
         }
 
+        if (this.#perWorkspaceSignal) {
+            this.#settings.disconnect(this.#perWorkspaceSignal);
+            this.#perWorkspaceSignal = 0;
+        }
+
         if (this.#buttonHeightSignal) {
             this.#settings.disconnect(this.#buttonHeightSignal);
             this.#buttonHeightSignal = 0;
@@ -204,7 +208,7 @@ export class SettingsConnector{
         }
 
         if (this.#iconHeightSignal) {
-            this.settings.disconnect(this.#iconHeightSignal);
+            this.#settings.disconnect(this.#iconHeightSignal);
             this.#iconHeightSignal = 0;
         }
 
