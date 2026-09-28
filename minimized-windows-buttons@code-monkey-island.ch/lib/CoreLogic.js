@@ -32,7 +32,6 @@ export class CoreLogic{
 
     #settings=null;
     #buttonFactory=null;
-
     #displayManager=null;
 
     /**
@@ -46,9 +45,13 @@ export class CoreLogic{
     #windowButtons=null; //{metawindow, button}
     #windowWorkspaces=null; //{window, workspaceIndex}
 
+
+
     #sessionSignal=0;
     #displaySignal=0;
     #workspaceSignal=0;
+
+
 
     #dragSuccess=false;
 

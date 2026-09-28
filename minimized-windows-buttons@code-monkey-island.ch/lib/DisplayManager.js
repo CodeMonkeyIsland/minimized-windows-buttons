@@ -27,6 +27,8 @@ export class DisplayManager{
     #coreLogic=null;
     #autohideHelper=null;
 
+
+
     #focusSignal=0;
     #scrollOverwriteSignal=0;
     #monitorResizeSignal=0;
@@ -36,6 +38,8 @@ export class DisplayManager{
     #overviewHideSignal=0;
     #resizeSignal=0; //window resize, not monitor!
     #positionSignal=0;
+
+
 
     #scrollContainer=null;
     #autohide_detect_container=null;

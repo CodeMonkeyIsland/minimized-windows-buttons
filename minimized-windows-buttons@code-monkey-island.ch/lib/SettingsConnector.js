@@ -4,7 +4,6 @@
  * just 2 real functions: connect & disconnect
  * other classes can access settings, this is for settings-hooks
  *
- * need to cut down the number of button-style vars
  */
 
 export class SettingsConnector{
@@ -14,27 +13,6 @@ export class SettingsConnector{
     #coreLogic=null;
     #displayManager=null;
     #buttonFactory=null;
-
-    #global_event_signal=0;
-    #coverSignal=0;
-    #autohideSizeSignal=0;
-    #marginVerticalSignal=0;
-    #marginHorizontalSignal=0;
-    #marginButtonSignal=0;
-    #positionSignal=0;
-    #perWorkspaceSignal=0;
-    #buttonHeightSignal=0;
-    #buttonWidthSignal=0;
-    #iconHeightSignal=0;
-    #lineHeightSignal=0;
-
-    #text_color_signal=0;
-    #bg_color_signal=0;
-    #border_color_signal=0;
-
-    #border_radius_Signal=0;
-    #font_weight_Signal=0;
-    #leave_space_margin_Signal=0;
 
     //polling them from coreLogic for now, so no signals needed... but at what cost?
     //#snapbackSignal=0;
@@ -55,200 +33,177 @@ export class SettingsConnector{
 
     connect(){
 
-        this.#global_event_signal=this.#settings.connect('changed::global-event-hook', () => {
-            const isEnabled = this.#settings.get_boolean('global-event-hook');
-            if (isEnabled){
-                this.#displayManager.setupGlobalEventHook();
-            }else{
-                this.#displayManager.disconnectGlobalEventHook();
-            }
-        });
+        this.#settings.connectObject(
+            'changed::global-event-hook',
+            () => {
+                const isEnabled = this.#settings.get_boolean('global-event-hook');
+                if (isEnabled){
+                    this.#displayManager.setupGlobalEventHook();
+                }else{
+                    this.#displayManager.disconnectGlobalEventHook();
+                }
+            },
+            this
+        );
 
-        this.#coverSignal=this.#settings.connect('changed::cover-behaviour', () => {
-            this.#displayManager.setCoverOption();
-            this.#displayManager.setupAutohideDetector();
-            //trigger reset and update in autohide
-            this.#displayManager.updateVisibilityActiveWindow();
+        this.#settings.connectObject(
+            'changed::cover-behaviour',
+            () => {
+                this.#displayManager.setCoverOption();
+                this.#displayManager.setupAutohideDetector();
+                this.#displayManager.updateVisibilityActiveWindow();
+            },
+            this
+        );
 
-        });
+        this.#settings.connectObject(
+            'changed::autohide-container-size',
+            () => { 
+                this.#displayManager.setAutohideDefaultSize();
+            },
+            this
+        );
 
-        this.#autohideSizeSignal=this.#settings.connect('changed::autohide-container-size', () => {
-            this.#displayManager.setAutohideDefaultSize();
-        });
+        this.#settings.connectObject(
+            'changed::margin-vertical',
+            () => {
+                this.#displayManager.setPosition();
+                this.#displayManager.updateVisibilityActiveWindow();
+            },
+            this
+        );
 
-        this.#marginVerticalSignal=this.#settings.connect('changed::margin-vertical', () => {
-            this.#displayManager.setPosition();
-            this.#displayManager.updateVisibilityActiveWindow();
-        });
+        this.#settings.connectObject(
+            'changed::margin-horizontal',
+            () => { 
+                this.#displayManager.setPosition();
+                this.#displayManager.updateVisibilityActiveWindow();
+            },
+            this
+        );
 
-        this.#marginHorizontalSignal=this.#settings.connect('changed::margin-horizontal', () => {
-            this.#displayManager.setPosition();
-            this.#displayManager.updateVisibilityActiveWindow();
-        });
+        this.#settings.connectObject(
+            'changed::margin-buttons',
+            () => {
+                this.#displayManager.setPosition();
+                this.#displayManager.updateVisibilityActiveWindow();
+            },
+            this
+        );
 
-        this.#marginButtonSignal=this.#settings.connect('changed::margin-buttons', () => {
-            this.#displayManager.setPosition();
-            this.#displayManager.updateVisibilityActiveWindow();
-        });
+        this.#settings.connectObject(
+            'changed::position-on-screen',
+            () => { 
+                this.#displayManager.setPosition();
+                this.#displayManager.updateVisibilityActiveWindow();
+            },
+            this
+        );
 
-        this.#positionSignal=this.#settings.connect('changed::position-on-screen', () => {
-            this.#displayManager.setPosition();
-            this.#displayManager.updateVisibilityActiveWindow();
-        });
+        this.#settings.connectObject(
+            'changed::per-workspace-buttons',
+            () => { 
+                this.#coreLogic.setWorkspaceButtonVisibility();
+            },
+            this
+        );
 
-        this.#perWorkspaceSignal=this.#settings.connect('changed::per-workspace-buttons', () => {
-            this.#coreLogic.setWorkspaceButtonVisibility();
-        });
+        this.#settings.connectObject(
+            'changed::button-height',
+            () => { 
+                this.#buttonFactory.init();
+                this.#displayManager.setPosition();
+                this.#displayManager.setScrollcontainerReactivity();
+            },
+            this
+        );
 
-        this.#buttonHeightSignal=this.#settings.connect('changed::button-height', () => {
-            this.#buttonFactory.init();
-            //this.#displayManager.resetAllButtonStyles();
-            this.#displayManager.setPosition();
-            this.#displayManager.setScrollcontainerReactivity();
-        });
+        this.#settings.connectObject(
+            'changed::button-width',
+            () => {
+                this.#buttonFactory.init();
+                this.#displayManager.setPosition();
+                this.#displayManager.setScrollcontainerReactivity();
+            },
+            this
+        );
 
-        this.#buttonWidthSignal=this.#settings.connect('changed::button-width', () => {
-            this.#buttonFactory.init();
-            //this.#displayManager.resetAllButtonStyles();
-            this.#displayManager.setPosition();
-            this.#displayManager.setScrollcontainerReactivity();
-        });
+        this.#settings.connectObject(
+            'changed::icon-height',
+            () => { 
+                this.#buttonFactory.init();
+                this.#displayManager.resetAllButtonStyles();
+            },
+            this
+        );
 
-        this.#iconHeightSignal=this.#settings.connect('changed::icon-height', () => {
-            this.#buttonFactory.init();
-            this.#displayManager.resetAllButtonStyles();
-        });
+        this.#settings.connectObject(
+            'changed::line-height',
+            () => {
+                this.#buttonFactory.init();
+                this.#displayManager.resetAllButtonStyles();
+            },
+            this
+        );
 
-        this.#lineHeightSignal=this.#settings.connect('changed::line-height', () => {
-            this.#buttonFactory.init();
-            this.#displayManager.resetAllButtonStyles();
-        });
+        this.#settings.connectObject(
+            'changed::text-color',
+            () => { 
+                this.#buttonFactory.init();
+                this.#displayManager.resetAllButtonStyles();
+            },
+            this
+        );
 
-        this.#text_color_signal=this.#settings.connect('changed::text-color', () => {
-            this.#buttonFactory.init();
-            this.#displayManager.resetAllButtonStyles();
-        });
+        this.#settings.connectObject(
+            'changed::bg-color',
+            () => { 
+                this.#buttonFactory.init();
+                this.#displayManager.resetAllButtonStyles();
+            },
+            this
+        );
 
-        this.#bg_color_signal=this.#settings.connect('changed::bg-color', () => {
-            this.#buttonFactory.init();
-            this.#displayManager.resetAllButtonStyles();
-        });
+        this.#settings.connectObject(
+            'changed::border-color',
+            () => { 
+                this.#buttonFactory.init();
+                this.#displayManager.resetAllButtonStyles();
+            },
+            this
+        );
 
-        this.#border_color_signal=this.#settings.connect('changed::border-color', () => {
-            this.#buttonFactory.init();
-            this.#displayManager.resetAllButtonStyles();
-        });
+        this.#settings.connectObject(
+            'changed::border-radius',
+            () => { 
+                this.#buttonFactory.init();
+                this.#displayManager.resetAllButtonStyles();
+            },
+            this
+        );
 
-        this.#border_radius_Signal=this.#settings.connect('changed::border-radius', () => {
-            this.#buttonFactory.init();
-            this.#displayManager.resetAllButtonStyles();
-        });
+        this.#settings.connectObject(
+            'changed::font-weight',
+            () => { 
+                this.#buttonFactory.init();
+                this.#displayManager.resetAllButtonStyles();
+            },
+            this
+        );
 
-        this.#font_weight_Signal=this.#settings.connect('changed::font-weight', () => {
-            this.#buttonFactory.init();
-            this.#displayManager.resetAllButtonStyles();
-        });
-
-        this.#leave_space_margin_Signal=this.#settings.connect('changed::leave-space-margin', () => {
-            this.#displayManager.setCoverOption();
-        });
+        this.#settings.connectObject(
+            'changed::leave-space-margin',
+            () => { 
+                this.#displayManager.setCoverOption();
+            },
+            this
+        );
 
     }
 
     disconnect(){
-
-        if (this.#global_event_signal) {
-            this.#settings.disconnect(this.#global_event_signal);
-            this.#global_event_signal = 0;
-        }
-
-        if (this.#coverSignal) {
-            this.#settings.disconnect(this.#coverSignal);
-            this.#coverSignal = 0;
-        }
-
-        if (this.#autohideSizeSignal) {
-            this.#settings.disconnect(this.#autohideSizeSignal);
-            this.#autohideSizeSignal = 0;
-        }
-
-        if (this.#marginVerticalSignal) {
-            this.#settings.disconnect(this.#marginVerticalSignal);
-            this.#marginVerticalSignal = 0;
-        }
-
-        if (this.#marginHorizontalSignal) {
-            this.#settings.disconnect(this.#marginHorizontalSignal);
-            this.#marginHorizontalSignal = 0;
-        }
-
-        if (this.#marginButtonSignal) {
-            this.#settings.disconnect(this.#marginButtonSignal);
-            this.#marginButtonSignal = 0;
-        }
-
-        if (this.#positionSignal) {
-            this.#settings.disconnect(this.#positionSignal);
-            this.#positionSignal = 0;
-        }
-
-        if (this.#perWorkspaceSignal) {
-            this.#settings.disconnect(this.#perWorkspaceSignal);
-            this.#perWorkspaceSignal = 0;
-        }
-
-        if (this.#buttonHeightSignal) {
-            this.#settings.disconnect(this.#buttonHeightSignal);
-            this.#buttonHeightSignal = 0;
-        }
-
-        if (this.#buttonWidthSignal) {
-            this.#settings.disconnect(this.#buttonWidthSignal);
-            this.#buttonWidthSignal = 0;
-        }
-
-        if (this.#iconHeightSignal) {
-            this.#settings.disconnect(this.#iconHeightSignal);
-            this.#iconHeightSignal = 0;
-        }
-
-        if (this.#lineHeightSignal) {
-            this.#settings.disconnect(this.#lineHeightSignal);
-            this.#lineHeightSignal = 0;
-        }
-
-        if (this.#text_color_signal) {
-            this.#settings.disconnect(this.#text_color_signal);
-            this.#text_color_signal = 0;
-        }
-
-        if (this.#bg_color_signal) {
-            this.#settings.disconnect(this.#bg_color_signal);
-            this.#bg_color_signal = 0;
-        }
-
-        if (this.#border_color_signal) {
-            this.#settings.disconnect(this.#border_color_signal);
-            this.#border_color_signal = 0;
-        }
-
-        if (this.#border_radius_Signal) {
-            this.#settings.disconnect(this.#border_radius_Signal);
-            this.#border_radius_Signal = 0;
-        }
-
-        if (this.#font_weight_Signal) {
-            this.#settings.disconnect(this.#font_weight_Signal);
-            this.#font_weight_Signal = 0;
-        }
-
-         if (this.#leave_space_margin_Signal) {
-            this.#settings.disconnect(this.#leave_space_margin_Signal);
-            this.#leave_space_margin_Signal = 0;
-        }
-
+        this.#settings.disconnectObject(this);
         this.#settings=null;
-
     }
 
 }
