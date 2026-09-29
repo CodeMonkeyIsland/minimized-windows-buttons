@@ -29,16 +29,9 @@ export class DisplayManager{
 
 
 
-    #focusSignal=0;
-    #scrollOverwriteSignal=0;
-    #monitorResizeSignal=0;
-    #autohide_showSignal=0;
-    #autohide_leaveSignal=0;
-    #overviewShowSignal=0;
-    #overviewHideSignal=0;
-    #resizeSignal=0; //window resize, not monitor!
-    #positionSignal=0;
-
+    //autohide for touch hack(no leave event...)
+    //nasty: global event hook
+    #globalEventSignal=null;
 
 
     #scrollContainer=null;
@@ -57,10 +50,6 @@ export class DisplayManager{
     #dndStartX=null;
     #dndStartY=null;
     #buttonMargin=0; //setting at drag start
-
-    //autohide for touch hack(no leave event...)
-    //nasty: global event hook
-    #globalEventSignal=null;
 
 
     constructor(_settings,  _buttonFactory, _coreLogic){
@@ -88,31 +77,24 @@ export class DisplayManager{
             y_expand: false,
         });
 
-        //decide what to do inside the function, calling it at any cover-behaviour
-        this.#focusSignal = global.display.connect('notify::focus-window', () => {
-            this.focusWindowChange();
-        });
-
-        this.#monitorResizeSignal = Main.layoutManager.connect('monitors-changed', () => {
-            this.monitorChanged();
-        });
-
-        //SCROLL:pos top and bottom:pipe vertical scroll to horizontal
-        this.#scrollOverwriteSignal= this.#scrollContainer.connect('scroll-event', (actor, event) => {
+        /**
+         * there is a new way of doing it. With Clutter.ScrollController.
+         * this is the old way. still working in Gnome 51, but will have to rewrite before 52.
+         * that will make it incompatible with Gnome <= 50
+         * 
+         * SCROLL:pos top and bottom:pipe vertical scroll to horizontal
+         */
+        this.#scrollContainer.connectObject('scroll-event', (actor, event) => {
             if (this.#useScrollPiping) {
                 return this.#scrollPiping(actor, event);
             }else{
                 return Clutter.EVENT_PROPAGATE;
             }
-        });
+        }, this.#scrollContainer);
+
 
         this.setPosition();
-
         this.setCoverOption();
-
-
-        this.#overviewShowSignal=Main.overview.connect('showing', () => this.setOverviewVisibility());
-        this.#overviewHideSignal=Main.overview.connect('hiding', () => this.setOverviewVisibility());
         this.setOverviewVisibility();
 
         if (this.#settings.get_boolean('global-event-hook') ){
@@ -124,6 +106,36 @@ export class DisplayManager{
             this.focusWindowChange();
             return GLib.SOURCE_REMOVE;
         });
+
+
+        //hooks
+
+        //decide what to do inside the function, calling it at any cover-behaviour
+        global.display.connectObject(
+            'notify::focus-window', 
+            () => {
+                this.focusWindowChange();
+            },
+            this
+        );
+
+        Main.layoutManager.connectObject(
+            'monitors-changed', 
+            () => {
+                this.monitorChanged();
+            }, this
+        );
+
+        Main.overview.connectObject(
+            'showing', 
+            () => this.setOverviewVisibility(),
+            this
+        );
+        Main.overview.connectObject(
+            'hiding', 
+            () => this.setOverviewVisibility(),
+            this
+        );
     }
 
 
@@ -132,30 +144,11 @@ export class DisplayManager{
         this.disconnectAutohideSignals();
         this.disconnectWindowDragAndRezizeSignals();
 
-        if (this.#focusSignal) {
-            global.display.disconnect(this.#focusSignal);
-            this.#focusSignal = 0;
-        }
+        global.display.disconnectObject(this);
+        Main.layoutManager.disconnectObject(this);
+        Main.overview.disconnectObject(this);
 
-        if (this.#scrollOverwriteSignal) {
-            this.#scrollContainer.disconnect(this.#scrollOverwriteSignal);
-            this.#scrollOverwriteSignal = 0;
-        }
-
-        if (this.#monitorResizeSignal) {
-            Main.layoutManager.disconnect(this.#monitorResizeSignal);
-            this.#monitorResizeSignal = 0;
-        }
-
-        if (this.#overviewShowSignal) {
-            Main.overview.disconnect(this.#overviewShowSignal);
-            this.#overviewShowSignal = 0;
-        }
-
-        if (this.#overviewHideSignal) {
-            Main.overview.disconnect(this.#overviewHideSignal);
-            this.#overviewHideSignal = 0;
-        }
+        this.#scrollContainer.disconnectObject(this.#scrollContainer);
 
         this.#destroyUIElements();
 
@@ -399,12 +392,27 @@ export class DisplayManager{
     focusWindowChange(){
         this.#autohideHelper.focusWindowChange(this, this.#autohideActive);
     }
-    setResizeSignal(_signal){
-        this.#resizeSignal=_signal;
+
+    resetWindowDragAndResizeSignals(_win){
+        this.disconnectWindowDragAndRezizeSignals();
+
+        _win.connectObject(
+            'size-changed', 
+            () => {
+                this.updateVisibilityActiveWindow();
+            },
+            this.#autohideHelper
+        );
+
+        _win.connectObject(
+            'position-changed', 
+            () => {
+                this.updateVisibilityActiveWindow();
+            }, 
+            this.#autohideHelper
+        );
     }
-    setPositionSignal(_signal){
-        this.#positionSignal=_signal;
-    }
+
     setOldFocusWindow(win) {
         this.#oldFocusWindow = win;
     }
@@ -413,12 +421,41 @@ export class DisplayManager{
     setupAutohideDetector(){
         this.#autohideHelper.setupAutohideDetector(this, this.#scrollContainer, this.#autohide_detect_container, this.#autohideActive, this.#settings);
     }
-    set_Autohide_Show_Signal(_signal){
-        this.#autohide_showSignal=_signal;
+
+
+    //next 3 are connected to autohide-helper-object, so scrolling and autohide-hooks can be connected/disconnected seperately
+    
+    set_Autohide_Show_Hook(){
+        this.#autohide_detect_container.connectObject(
+            'enter-event', 
+            () => {
+                this.#scrollContainer.show();
+            },
+            this.#autohideHelper
+        );
     }
-    set_Autohide_Leave_Signal(_signal){
-        this.#autohide_leaveSignal=_signal;
+
+    set_Autohide_Leave_Hook(){
+        this.#scrollContainer.connectObject(
+            'leave-event', (actor, event) => {
+                if (!this.#autohideHelper.pointerInside(this.#scrollContainer, event)) {
+                    this.updateVisibilityActiveWindow();
+                }
+            }, this.#autohideHelper
+        );
     }
+
+    set_Autohide_Always_Leave_Hook(){
+        this.#scrollContainer.connectObject(
+            'leave-event', (actor, event) => {
+                if (!this.#autohideHelper.pointerInside(this.#scrollContainer, event)) {
+                    this.#scrollContainer.hide();
+                }
+            },
+            this.#autohideHelper
+        );
+    }
+
 
     //---------------------------------------------------------------------------------------------------------------------
     //-----------------------------------------rest------------------------------------------------------------------------
@@ -559,9 +596,10 @@ export class DisplayManager{
     }
 
     resetAllButtonwindowIconPositions(){
-        for (let [metaWindow, btn] of this.#coreLogic.getWindowButtons()) {
-            if (btn!==this.#coreLogic.placeholderButton){
-                this.updateIconGeometry(btn, metaWindow);
+        for (let [metaWindow, { button }] of this.#coreLogic.getWindowMap()) {
+            if (button==null){return;}
+            if (button!==this.#coreLogic.placeholderButton){
+                this.updateIconGeometry(button, metaWindow);
             }
         }
     }
@@ -656,27 +694,14 @@ export class DisplayManager{
     }
 
     disconnectAutohideSignals(){
-        if (this.#autohide_leaveSignal) {
-            this.#scrollContainer.disconnect(this.#autohide_leaveSignal);
-            this.#autohide_leaveSignal = 0;
-        }
-        if (this.#autohide_showSignal) {
-            this.#autohide_detect_container.disconnect(this.#autohide_showSignal);
-            this.#autohide_showSignal = 0;
-        }
+        this.#autohide_detect_container.disconnectObject(this.#autohideHelper);
+        this.#scrollContainer.disconnectObject(this.#autohideHelper);
     }
 
     disconnectWindowDragAndRezizeSignals(){
         const win = this.#oldFocusWindow;
         if (win) {
-            if (this.#resizeSignal) {
-                win.disconnect(this.#resizeSignal);
-                this.#resizeSignal = 0;
-            }
-            if (this.#positionSignal) {
-                win.disconnect(this.#positionSignal);
-                this.#positionSignal = 0;
-            }
+            win.disconnectObject(this.#autohideHelper);
         }
         this.#oldFocusWindow=null; //dont destroy the window!
     }

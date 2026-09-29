@@ -10,7 +10,7 @@
  * no hooks saved here, settings-connected and hooked vars get passed
  * down in the piping functions as needed.
  *
- * this means: for now, no signals are to be set here -> public signal setters in piping section of DM
+ * helper class: no hooks/signals are to be set or saved here, doing that in CoreLogic/DisplayManager/SettingsConnector
  *
  */
 
@@ -111,28 +111,9 @@ export default class DisplayManager_AutohideHelper{
                 return false;
             }
 
-            _displayManager.disconnectWindowDragAndRezizeSignals();
-
-            _displayManager.setResizeSignal(
-                win.connect('size-changed', () => {
-                    //going back here bacause lazyness
-                    _displayManager.updateVisibilityActiveWindow();
-                })
-            );
-
-            _displayManager.setPositionSignal(
-                win.connect('position-changed', () => {
-                    //going back here bacause lazyness
-                    _displayManager.updateVisibilityActiveWindow();
-                })
-            );
-
-            //do i also need a signal on destroy()? --> cleaning that up in coreLogic
-
+            _displayManager.resetWindowDragAndResizeSignals(win);
             _displayManager.setOldFocusWindow(win);
-
-            //going back here bacause lazyness
-             _displayManager.updateVisibilityActiveWindow();
+            _displayManager.updateVisibilityActiveWindow();
         }
     }
 
@@ -153,35 +134,18 @@ export default class DisplayManager_AutohideHelper{
 
         if (_autohideActive){
 
-            //lazy
             _displayManager.setAutohideDefaultSize();
-
             _autohide_detect_container.show();
             _autohide_detect_container.queue_relayout();
-
-
-            _displayManager.set_Autohide_Show_Signal(_autohide_detect_container.connect('enter-event', () => {
-                _scrollContainer.show();
-            }));
-
+            _displayManager.set_Autohide_Show_Hook();
 
             if (_settings.get_string('cover-behaviour') == "autohide"){
-                //lazy
                 _displayManager.updateVisibilityActiveWindow();
-                _displayManager.set_Autohide_Leave_Signal(_scrollContainer.connect('leave-event', (actor, event) => {
-                    if (!this.pointerInside(_scrollContainer, event)) {
-                        //lazy
-                        _displayManager.updateVisibilityActiveWindow();
-                     }
-                }));
+                _displayManager.set_Autohide_Leave_Hook();
 
             }else if (_settings.get_string('cover-behaviour') == "autohide always"){
                 _scrollContainer.hide();
-                _displayManager.set_Autohide_Leave_Signal(_scrollContainer.connect('leave-event', (actor, event) => {
-                    if (!this.pointerInside(_scrollContainer, event)) {
-                        _scrollContainer.hide();
-                     }
-                }));
+                _displayManager.set_Autohide_Always_Leave_Hook();
             }
 
         }else{
@@ -193,6 +157,7 @@ export default class DisplayManager_AutohideHelper{
 
     //should really decide on some general policy
     //on what coords to use everywhere...
+    //...maybe move this up into displayManager...
     pointerInside(actor, event) {
 
         const [x, y] = event.get_coords();

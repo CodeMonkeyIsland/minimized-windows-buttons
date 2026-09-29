@@ -1,6 +1,7 @@
 /**
  * Makes and changes Buttons
- * no hooks/signals are to be saved here, doing that in coreLogic
+ * 
+ * helper class: no hooks/signals are to be set here, doing that in coreLogic/DisplayManager/SettingsConnector
  */
 
 import St from 'gi://St';
