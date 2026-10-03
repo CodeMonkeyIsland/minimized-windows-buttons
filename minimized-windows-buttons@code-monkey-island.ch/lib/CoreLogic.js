@@ -16,9 +16,6 @@
  */
 
 import St from 'gi://St';
-import Clutter from 'gi://Clutter';
-import Gio from 'gi://Gio';
-import Shell from 'gi://Shell';
 import GLib from 'gi://GLib';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -41,11 +38,24 @@ export class CoreLogic{
      */
     container=null;
 
-    #windowMap=null; //metaWindow, {button, workspaceIndex}
+    /**
+     * contains all infos about watched windows
+     * metaWindow, {button, workspaceIndex}
+     * button and wsindex are null if window not minimized!, check for it!
+     */
+    #windowMap=null;
 
     #dragSuccess=false;
 
     placeholderButton=null;
+
+    /**
+     * some setting states.
+     * those vars are set by Settingsconnector-hooks
+     */
+    snapback_enabled=false;
+    perWorkspace_enabled=false;
+    dragScrollHack_enabled=false;
 
     constructor(_settings, _buttonFactory){
         this.#windowMap=new Map();
@@ -62,6 +72,11 @@ export class CoreLogic{
     }
 
     init(){
+
+        this.snapback_enabled=this.#settings.get_boolean('snapback');
+        this.perWorkspace_enabled=this.#settings.get_boolean('per-workspace-buttons');
+        this.dragScrollHack_enabled=this.#settings.get_boolean('drag-scroll-hack');
+
         this.#setupButtonContainer();
 
         this.#displayManager.init();
@@ -342,7 +357,7 @@ export class CoreLogic{
 
             let [x, y] = event.get_coords();
 
-            if (this.#settings.get_boolean('drag-scroll-hack')){
+            if (this.dragScrollHack_enabled){
                 this.#displayManager.dragScrollHack(x,y);
             }
 
@@ -378,7 +393,7 @@ export class CoreLogic{
                 if (!this.#dragSuccess) {
 
                     //if snapback, the placeholder button is in the right place
-                    if (this.#settings.get_boolean('snapback')){
+                    if (this.snapback_enabled){
                         this.#putButtonInPlace(btn);
                         this.#displayManager.resetAllButtonStyles();
                         this.#displayManager.resetAllButtonwindowIconPositions();
@@ -456,13 +471,11 @@ export class CoreLogic{
     #getAppropriatePlaceholderIndex(children, dropX, dropY){
         let hoveredIndex = -1;
 
-        let snapback_enabled=this.#settings.get_boolean('snapback');
-
         for (let i = 0; i < children.length; i++) {
             const child = children[i];
             const [cx, cy] = child.get_transformed_position();
 
-            if (snapback_enabled){
+            if (this.snapback_enabled){
                 // just check x for horizontal, y for vertical
                 // return if smaller (covering button gaps)
                 if (this.#displayManager.isHorizontal){
@@ -521,14 +534,16 @@ export class CoreLogic{
     //-------------------------------------------Rest: Workspacebuttonvisibility, ... -----------------------------------------------------
     //-------------------------------------------------------------------------------------------------------------------------------------
     setWorkspaceButtonVisibility(){
-        if (this.#settings.get_boolean('per-workspace-buttons')){
+        if (this.perWorkspace_enabled){
             let currentWorkspaceNr=global.workspace_manager.get_active_workspace().index();
 
             for (let [metaWindow, {button,workspace_index}] of this.#windowMap) {
-                if (workspace_index==currentWorkspaceNr){
-                    button.visible=true;
-                }else{
-                    button.visible=false;
+                if (button){
+                    if (workspace_index==currentWorkspaceNr){
+                        button.visible=true;
+                    }else{
+                        button.visible=false;
+                    }
                 }
             }
         }else{

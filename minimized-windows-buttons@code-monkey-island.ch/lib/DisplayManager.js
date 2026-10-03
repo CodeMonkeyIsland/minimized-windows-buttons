@@ -11,7 +11,6 @@
 
 import St from 'gi://St';
 import Clutter from 'gi://Clutter';
-import Meta from 'gi://Meta';
 import GLib from 'gi://GLib';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -28,9 +27,12 @@ export class DisplayManager{
     #autohideHelper=null;
 
 
-
-    //autohide for touch hack(no leave event...)
-    //nasty: global event hook
+    /**
+     * autohide for touch hack(no leave event)
+     * nasty: global event hook
+     * leaving this connected the old way (saving signal)
+     * as a reminder to hopefully get rid of it next upload
+     */
     #globalEventSignal=null;
 
 
@@ -43,8 +45,12 @@ export class DisplayManager{
     #useScrollPiping=false;
     #autohideActive=false;
     #autohide_always=false;
+
     //public (shared with coreLogic)
     isHorizontal=false; //true for pos top&bottom
+
+    //public, set by settingsconnector
+    showInOverview=false;
 
     //for touch scroll hack
     #dndStartX=null;
@@ -107,6 +113,8 @@ export class DisplayManager{
             return GLib.SOURCE_REMOVE;
         });
 
+        this.showInOverview=this.#settings.get_boolean('show-in-overview');
+
 
         //hooks
 
@@ -128,7 +136,9 @@ export class DisplayManager{
 
         Main.overview.connectObject(
             'showing', 
-            () => this.setOverviewVisibility(),
+            () => {
+                this.setOverviewVisibility();
+            },
             this
         );
         Main.overview.connectObject(
@@ -549,9 +559,8 @@ export class DisplayManager{
     }
 
     setOverviewVisibility(){
-        let showInOverview = this.#settings.get_boolean('show-in-overview');
         if (Main.overview.visible){
-            this.#scrollContainer.visible = showInOverview;
+            this.#scrollContainer.visible = this.showInOverview;
         }else{
             this.#scrollContainer.visible = true;
         }

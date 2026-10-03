@@ -33,6 +33,7 @@ export default class MiscPage{
         group.add(row);
         this.#settings.bind('show-in-overview', row, 'active', Gio.SettingsBindFlags.DEFAULT);
 
+
         // stick to workspace or always visible
         const rowWS = new Adw.SwitchRow({
             title: _('Per Workspace Buttons'),

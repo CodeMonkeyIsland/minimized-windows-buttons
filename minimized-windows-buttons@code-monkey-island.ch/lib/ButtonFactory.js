@@ -15,7 +15,6 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 export class ButtonFactory{
 
-    //setting them on init now
     #buttonWidth=0;
     #buttonHeight=0;
     #iconHeight=0;

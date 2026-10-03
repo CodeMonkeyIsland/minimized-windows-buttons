@@ -14,10 +14,6 @@ export class SettingsConnector{
     #displayManager=null;
     #buttonFactory=null;
 
-    //polling them from coreLogic for now, so no signals needed... but at what cost?
-    //#snapbackSignal=0;
-    //#dragScrollHackSignal=0;
-
     constructor(_settings, _buttonFactory){
         this.#settings=_settings;
         this.#buttonFactory=_buttonFactory;
@@ -33,18 +29,7 @@ export class SettingsConnector{
 
     connect(){
 
-        this.#settings.connectObject(
-            'changed::global-event-hook',
-            () => {
-                const isEnabled = this.#settings.get_boolean('global-event-hook');
-                if (isEnabled){
-                    this.#displayManager.setupGlobalEventHook();
-                }else{
-                    this.#displayManager.disconnectGlobalEventHook();
-                }
-            },
-            this
-        );
+        //-----------------------Cover Options-----------------------------------
 
         this.#settings.connectObject(
             'changed::cover-behaviour',
@@ -60,6 +45,25 @@ export class SettingsConnector{
             'changed::autohide-container-size',
             () => { 
                 this.#displayManager.setAutohideDefaultSize();
+            },
+            this
+        );
+
+        this.#settings.connectObject(
+            'changed::leave-space-margin',
+            () => { 
+                this.#displayManager.setCoverOption();
+            },
+            this
+        );
+
+        //-----------------------Placement-----------------------------------
+
+        this.#settings.connectObject(
+            'changed::position-on-screen',
+            () => { 
+                this.#displayManager.setPosition();
+                this.#displayManager.updateVisibilityActiveWindow();
             },
             this
         );
@@ -91,22 +95,7 @@ export class SettingsConnector{
             this
         );
 
-        this.#settings.connectObject(
-            'changed::position-on-screen',
-            () => { 
-                this.#displayManager.setPosition();
-                this.#displayManager.updateVisibilityActiveWindow();
-            },
-            this
-        );
-
-        this.#settings.connectObject(
-            'changed::per-workspace-buttons',
-            () => { 
-                this.#coreLogic.setWorkspaceButtonVisibility();
-            },
-            this
-        );
+        //-----------------------Style-----------------------------------
 
         this.#settings.connectObject(
             'changed::button-height',
@@ -191,13 +180,54 @@ export class SettingsConnector{
             this
         );
 
+        //-----------------------Misc.-----------------------------------
+
         this.#settings.connectObject(
-            'changed::leave-space-margin',
+            'changed::show-in-overview',
             () => { 
-                this.#displayManager.setCoverOption();
+                this.#displayManager.showInOverview=this.#settings.get_boolean('show-in-overview');
             },
             this
         );
+
+        this.#settings.connectObject(
+            'changed::per-workspace-buttons',
+            () => { 
+                this.#coreLogic.perWorkspace_enabled=this.#settings.get_boolean('per-workspace-buttons');
+                this.#coreLogic.setWorkspaceButtonVisibility();
+            },
+            this
+        );
+
+        this.#settings.connectObject(
+            'changed::snapback',
+            () => { 
+                this.#coreLogic.snapback_enabled=this.#settings.get_boolean('snapback');
+            },
+            this
+        );
+
+        this.#settings.connectObject(
+            'changed::drag-scroll-hack',
+            () => { 
+                this.#coreLogic.dragScrollHack_enabled=this.#settings.get_boolean('drag-scroll-hack');
+            },
+            this
+        );
+
+        this.#settings.connectObject(
+            'changed::global-event-hook',
+            () => {
+                const isEnabled = this.#settings.get_boolean('global-event-hook');
+                if (isEnabled){
+                    this.#displayManager.setupGlobalEventHook();
+                }else{
+                    this.#displayManager.disconnectGlobalEventHook();
+                }
+            },
+            this
+        );
+
 
     }
 
