@@ -57,6 +57,7 @@ export class DisplayManager{
     #dndStartY=null;
     #buttonMargin=0; //setting at drag start
 
+    #glib_timeout_source_id=null;
 
     constructor(_settings,  _buttonFactory, _coreLogic){
         this.#coreLogic=_coreLogic;
@@ -107,12 +108,12 @@ export class DisplayManager{
             this.setupGlobalEventHook();
         }
 
-        //for detecting the extensions-window when turning on/off
-        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+        //timeout for detecting the extensions-window when turning extension/off
+        this.#glib_timeout_source_id=GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
             this.focusWindowChange();
             return GLib.SOURCE_REMOVE;
         });
-
+        
         this.showInOverview=this.#settings.get_boolean('show-in-overview');
 
 
@@ -150,6 +151,13 @@ export class DisplayManager{
 
 
     close(){
+        //handled exception: g_source_remove: assertion 'tag > 0' failed
+        //because SOURCE_REMOVE. no try/catch according to best practices
+        if (this.#glib_timeout_source_id) {
+            GLib.Source.remove(this._sourceId);
+            this.#glib_timeout_source_id= null;
+        }
+
         this.disconnectGlobalEventHook();
         this.disconnectAutohideSignals();
         this.disconnectWindowDragAndRezizeSignals();
@@ -606,14 +614,14 @@ export class DisplayManager{
 
     resetAllButtonwindowIconPositions(){
         for (let [metaWindow, { button }] of this.#coreLogic.getWindowMap()) {
-            if (button==null){return;}
-            if (button!==this.#coreLogic.placeholderButton){
+            if (button==null){
+                //open window, skip
+            }else if (button!==this.#coreLogic.placeholderButton){
                 this.updateIconGeometry(button, metaWindow);
             }
         }
     }
 
-    //watch out for placeholder!!!
     //better do this with windowButtons?
     resetAllButtonStyles(){
         for (const child of this.#coreLogic.container.get_children()) {
@@ -630,7 +638,7 @@ export class DisplayManager{
         this.setIconGeometry(x,y,w,h,metaWindow);
     }
 
-    //open windows, set animation position to next free slot in contianer
+    //for open windows, set animation position to placeholder-button
     setWindowAnimationPositionOpen(metaWindow){
         let btn=this.#coreLogic.placeholderButton;
         btn.get_allocation_box();
@@ -640,7 +648,7 @@ export class DisplayManager{
         this.setIconGeometry(x,y,w,h,metaWindow);
     }
 
-    //doing the actual setting work for the functions above
+    //doing the actual setting work for the 2 functions above
     setIconGeometry(x,y,w,h, metaWindow){
         let rect = new Mtk.Rectangle({
             x: Math.floor(x),

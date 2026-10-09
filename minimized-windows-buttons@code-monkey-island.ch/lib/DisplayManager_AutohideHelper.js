@@ -15,8 +15,6 @@
  */
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import GLib from 'gi://GLib';
-
 
 export default class DisplayManager_AutohideHelper{
 

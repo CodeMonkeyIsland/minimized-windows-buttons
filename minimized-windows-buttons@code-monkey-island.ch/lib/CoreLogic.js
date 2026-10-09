@@ -16,7 +16,6 @@
  */
 
 import St from 'gi://St';
-import GLib from 'gi://GLib';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
@@ -45,7 +44,8 @@ export class CoreLogic{
      */
     #windowMap=null;
 
-    #dragSuccess=false;
+    #droppedOnContainer=false;
+    #dragging=false;
 
     placeholderButton=null;
 
@@ -81,7 +81,6 @@ export class CoreLogic{
 
         this.#displayManager.init();
 
-        //was in DM init, do i really need it here?
         this.#resetPlaceholder();
 
         //existing windows
@@ -115,11 +114,11 @@ export class CoreLogic{
             },
             this
         );
+
     }
 
     close(){
         this.#clearPlaceholder();
-
         Main.sessionMode.disconnectObject(this);
         global.display.disconnectObject(this);
         global.workspace_manager.disconnectObject(this);
@@ -182,16 +181,10 @@ export class CoreLogic{
 
         this.#windowMap.set(metaWindow, { button: null, workspace_index: null } );
 
-        //initial check, if minimized, windowopen-animation-position gets set in button.click()
         if (metaWindow.minimized) {
             this.#ensureButton(metaWindow);
         }else{
-            //open windows: set animation-position to next free slot(placeholderButton-position)
-            //Bad CodeMonkey: not understanding what to wait for
-            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
-                this.#displayManager.setWindowAnimationPositionOpen(metaWindow);
-                return GLib.SOURCE_REMOVE;
-            });
+            this.#displayManager.setWindowAnimationPositionOpen(metaWindow);
         }
     }
 
@@ -203,7 +196,6 @@ export class CoreLogic{
     }
 
     #ensureButton(metaWindow) {
-
         const windowData = this.#windowMap.get(metaWindow);
         if(!windowData){
             console.log('[Minimized Windows Buttons] ERROR: ensureButton called on non-mapped window!');
@@ -220,17 +212,8 @@ export class CoreLogic{
 
         this.#windowMap.set(metaWindow, windowData);
 
-
         this.setWorkspaceButtonVisibility();
         this.#displayManager.setScrollcontainerReactivity();
-        this.container.queue_relayout();
-
-        //Bad CodeMonkey: not understanding what to wait for
-        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
-            this.#displayManager.resetAllOpenWindowIconPositions();
-            this.#displayManager.updateIconGeometry(btn, metaWindow);
-            return GLib.SOURCE_REMOVE;
-        });
     }
 
     #putButtonInPlace(btn){
@@ -250,7 +233,6 @@ export class CoreLogic{
     }
 
     #removeButton(metaWindow) {
-
         const windowData = this.#windowMap.get(metaWindow);
         if (!windowData){return;}
 
@@ -273,12 +255,6 @@ export class CoreLogic{
 
         //without relayout, the container leaves a gap in the buttons place
         this.container.queue_relayout();
-
-        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
-            this.#displayManager.resetAllOpenWindowIconPositions();
-            this.#displayManager.resetAllButtonwindowIconPositions();
-            return GLib.SOURCE_REMOVE;
-        });
     }
 
     //-------------------------------------------------------------------------------------------------------------------------------------
@@ -297,12 +273,8 @@ export class CoreLogic{
                 return DND.DragDropResult.CONTINUE;
             },
             acceptDrop: (source, actor, x, y, time) => {
-                this.#dragSuccess=true;
+                this.#droppedOnContainer=true;
                 this.reorderButtons(actor, x, y);
-                this.#displayManager.resetAllButtonStyles();
-                this.#displayManager.resetAllButtonwindowIconPositions();
-                this.#displayManager.resetAllOpenWindowIconPositions();
-
                 return true;
             }
         };
@@ -319,8 +291,8 @@ export class CoreLogic{
         btn.connectObject('clicked',() => {
             let currentWorkspace = global.workspace_manager.get_active_workspace();
             metaWindow.change_workspace(currentWorkspace);
-            try { metaWindow.unminimize(); } catch(e) { console.error(e); }
-            try { metaWindow.activate(global.get_current_time());} catch(e) { console.error(e); }
+            metaWindow.unminimize();
+            metaWindow.activate(global.get_current_time());
         },btn);
 
         btn._draggable = DND.makeDraggable(btn, {});
@@ -373,7 +345,8 @@ export class CoreLogic{
          */
         btn._draggable.connectObject('drag-begin', 
                 () => {
-                    this.#dragSuccess=false;
+                    this.#droppedOnContainer=false;
+                    this.#dragging=true;
                     this.#displayManager.resetDnD();
                 },
                 btn
@@ -382,22 +355,21 @@ export class CoreLogic{
 
         /**
          * this gets called also if no drop on buttoncontainer
-         * here case drop on !buttoncontainer gets handled. drop on buttoncontainer
-         * gets handled in container-hook
          */
         btn._draggable.connectObject('drag-end', 
             (draggable) => {
-
+                this.#dragging=false;
                 this.#displayManager.resetDnD();
 
-                if (!this.#dragSuccess) {
-
+                if (this.#droppedOnContainer) {
+                    this.#displayManager.resetAllButtonStyles();
+                    this.#displayManager.resetAllButtonwindowIconPositions();
+                }else{
                     //if snapback, the placeholder button is in the right place
                     if (this.snapback_enabled){
                         this.#putButtonInPlace(btn);
-                        this.#displayManager.resetAllButtonStyles();
+                        this.#displayManager.resetAllButtonStyles();                   
                         this.#displayManager.resetAllButtonwindowIconPositions();
-                        this.#displayManager.resetAllOpenWindowIconPositions();
                         return;
                     }
 
@@ -419,12 +391,9 @@ export class CoreLogic{
                             let targetWorkspace = global.workspace_manager.get_active_workspace();
                             metaWindow.change_workspace(targetWorkspace);
 
-                            try {
-                                metaWindow.unminimize();
-                                metaWindow.activate(global.get_current_time());
-                            }catch(e){
-                                logError(e);
-                            }
+                            metaWindow.unminimize();
+                            metaWindow.activate(global.get_current_time());
+
                             this.#removeButton(metaWindow);
                         }
                     }
@@ -432,6 +401,12 @@ export class CoreLogic{
             },
             btn
         );
+        
+        btn.connectObject('notify::allocation', () => {
+            if (!this.#dragging){
+                this.#displayManager.updateIconGeometry(btn, metaWindow);
+            }
+        }, btn);
     }
 
     //-------------------------------------------------------------------------------------------------------------------------------------
@@ -513,6 +488,15 @@ export class CoreLogic{
         if (this.placeholderButton==null){
             console.log('[Minimized Windows Buttons] WARNING: placeholderButton=null, this is ok only during init!');
             this.placeholderButton=this.#buttonFactory.makePlaceholderButton();
+            
+            this.placeholderButton.connectObject('notify::allocation', 
+                () => {
+                    if (!this.#dragging){
+                        this.#displayManager.resetAllOpenWindowIconPositions();
+                    }
+                },
+                this
+            );
         }
         if (this.placeholderButton.get_parent()){this.placeholderButton.get_parent().remove_child(this.placeholderButton);}
         this.container.add_child(this.placeholderButton);
@@ -522,6 +506,7 @@ export class CoreLogic{
     #clearPlaceholder() {
         if (this.placeholderButton) {
             const container = this.container;
+            this.placeholderButton.disconnectObject(this);
             if (this.placeholderButton.get_parent() === container) {
                 container.remove_child(this.placeholderButton);
             }
